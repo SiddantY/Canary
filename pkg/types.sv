@@ -5,6 +5,8 @@
 // localparam SETS = 16;
 package rv32i_types;
 
+    // opcode definitions
+
     typedef enum logic [6:0] {
         op_b_lui   = 7'b0110111, // U load upper immediate 
         op_b_auipc = 7'b0010111, // U add upper immediate PC 
@@ -18,8 +20,6 @@ package rv32i_types;
         //op_b_mul   = 7'b0110011, // R multiply operation
         op_b_csr   = 7'b1110011  // I control and status register 
     } rv32i_op_b_t;
-
-    // Add more things here . . .
 
     typedef enum bit [2:0] {
         beq  = 3'b000,
@@ -66,6 +66,8 @@ package rv32i_types;
         alu_and = 3'b111
     } alu_ops;
 
+    // rvfi struct
+
     typedef struct packed {
         logic           monitor_valid;
         logic   [63:0]  monitor_order;
@@ -85,6 +87,8 @@ package rv32i_types;
         logic   [31:0]  monitor_mem_rdata;
         logic   [31:0]  monitor_mem_wdata;
     } rvfi_data_t;
+
+    // Piplined core register defs 
 
     typedef struct packed {
         bit [31:0] pc;
@@ -163,7 +167,272 @@ package rv32i_types;
         rvfi_data_t rvfi;
         
     } mem_wb_reg_t;
+
+
+    // OOO core structs + parameters
+    parameter IQ_DATA_WIDTH = 64;
+    parameter IQ_DEPTH = 16;
+    parameter NUM_REGS = 64;
+    parameter ROB_SIZE = 16;
+    parameter ALU_STATION_DEPTH = 16;
+    parameter LD_ST_QUEUE_DEPTH = 16;
+
+    typedef struct packed {
+        bit       busy; // 1
+        bit [6:0] opcode; // 1 + 7 = 8
+        bit [$clog2(NUM_REGS)-1:0] phys_rd; // 8 + 8  = 16
+        bit [2:0] funct3; // 16 + 3 = 19
+        bit [$clog2(NUM_REGS)-1:0] phys_rs1; // 19 + 8 = 27
+        bit       rs1_valid; // 27 + 1 = 28
+        bit [$clog2(NUM_REGS)-1:0] phys_rs2; // 28 + 8 = 34 --- ???? cant math -> 36
+        bit       rs2_valid; // 34 + 1 = 35
+        bit [$clog2(ROB_SIZE)-1:0] rob_index;
+        bit [31:0] imm; // 39 + 32 = 71
+        bit [4:0] arch_rs1; // 71 + 5 = 76
+        bit [4:0] arch_rs2; // 76 + 5 = 81
+        bit [4:0] arch_rd; // 81 + 5 = 86
+        bit       regf_we; // 86 + 1 = 87
+        bit       aluc; // 87 + 1 = 88
+        bit [6:0] funct7; // 88 + 7 = 95
+        bit [31:0] pc;
+        bit [63:0] order;
+        bit [31:0] inst;
+        bit branch_pred;
+    } reservation_station_entry_t;
+
+    typedef struct packed {
+        bit valid;
+        bit [63:0] order;
+        bit [31:0] inst;
+        bit [4:0] rs1_addr;
+        bit [4:0] rs2_addr;
+        bit [31:0] rs1_rdata;
+        bit [31:0] rs2_rdata;
+        bit [4:0] rd_addr;
+        bit [31:0] rd_wdata;
+        bit [31:0] pc_rdata;
+        bit [31:0] pc_wdata;
+        bit [31:0] mem_addr;
+        bit [3:0] mem_rmask;
+        bit [3:0] mem_wmask;
+        bit [31:0] mem_rdata;
+        bit [31:0] mem_wdata;
+    } rvfi_commit_packet_t;
  
+    typedef struct packed {
+        bit [$clog2(NUM_REGS)-1:0] phys_rd; // 8
+        bit [31:0] phys_rd_val; // 8 + 32 = 40
+        bit [$clog2(ROB_SIZE)-1:0] rob_index; // 40 + 4 = 44
+        bit [4:0] arch_rd; // 44 + 5 = 49
+        bit       regf_we; // 49 + 1 = 50
+        bit       alu_or_cmp_op; // 50 + 1 = 51
+        bit execute_valid;
+        bit branch_mismatch;
+        rvfi_commit_packet_t rvfi;
+    } data_bus_package_t;
+
+    typedef struct packed {
+        bit       done; // 1
+        bit [31:0] pc; // 1 + 32 = 33
+        bit [31:0] instruction; // 33 + 32 = 65
+        bit [$clog2(NUM_REGS)-1:0] phys_rd; // 65 +
+        bit [4:0] arch_rd;
+        bit branch_mismatch;
+        // rvfi_commit_packet_t rvfi;
+    } rob_entry_t;
+
+    typedef union packed {
+        bit [37:0] word;
+
+        struct packed {
+            bit [1:0] extra;
+            bit [11:0] i_imm;
+            bit [6:0] rs1;
+            bit [2:0] funct3;
+            bit [6:0] rd;
+            bit [6:0] opcode;
+        } i_type;
+
+        struct packed {
+            bit [6:0] funct7;
+            bit [6:0] rs2;
+            bit [6:0] rs1;
+            bit [2:0] funct3;
+            bit [6:0] rd;
+            bit [6:0] opcode;
+        } r_type;
+
+        struct packed {
+            bit [1:0] extra;
+            bit [11:5] imm_s_top;
+            bit [6:0]  rs2;
+            bit [6:0]  rs1;
+            bit [2:0]  funct3;
+            bit [4:0]  imm_s_bot;
+            bit [6:0] opcode;
+        } s_type;
+
+        struct packed {
+            bit [1:0] extra;
+            bit [6:0] imm_b_top;
+            bit [6:0] rs2;
+            bit [6:0] rs1;
+            bit [2:0] funct3;
+            bit [4:0] imm_b_bot;
+            bit [6:0] opcode;
+        } b_type;
+
+        struct packed {
+            bit [3:0] extra;
+            bit [19:0] imm;
+            bit [6:0]  rd;
+            bit [6:0] opcode;
+        } j_type;
+
+    } instr_t;
+
+    typedef struct packed {
+        bit [6:0] opcode; // can and should only have ld or st opcodes
+        bit [2:0] funct3; // 8/16/32 tings
+        // bit [31:0] dmem_addr_or_rdwdata; // if ld dmem_addr, if st rd_wdata
+        bit rs1_ready;
+        bit [$clog2(NUM_REGS)-1:0] pr1_s_ld_st;
+        bit [4:0] arch_rs1;
+        
+        bit rs2_ready;
+        bit [$clog2(NUM_REGS)-1:0] pr2_s_ld_st;
+        bit [4:0] arch_rs2;
+
+        bit [$clog2(NUM_REGS)-1:0] phys_rd;
+        bit [4:0] arch_rd;
+
+        bit [$clog2(ROB_SIZE)-1:0] rob_index;
+        bit [31:0] pc;
+        bit [31:0] imm;
+        bit [63:0] order;
+        bit [31:0] inst;
+    } ld_st_queue_t;
+
+    // typedef union packed {
+    //     bit [36:0] word;
+
+    //     struct packed {
+    //         bit [2:0] extra;
+    //         bit [11:0] i_imm;
+    //         bit [$clog2(NUM_REGS)-1:0] rs1;
+    //         bit [2:0] funct3;
+    //         bit [$clog2(NUM_REGS)-1:0] rd;
+    //         bit [6:0] opcode;
+    //     } i_type;
+
+    //     struct packed {
+    //         bit [1:0] extra;
+    //         bit [6:0] funct7;
+    //         bit [$clog2(NUM_REGS)-1:0] rs2;
+    //         bit [$clog2(NUM_REGS)-1:0] rs1;
+    //         bit [2:0] funct3;
+    //         bit [$clog2(NUM_REGS)-1:0] rd;
+    //         bit [6:0] opcode;
+    //     } r_type;
+
+    //     struct packed {
+    //         bit [2:0] extra;
+    //         bit [11:5] imm_s_top;
+    //         bit [$clog2(NUM_REGS)-1:0]  rs2;
+    //         bit [$clog2(NUM_REGS)-1:0]  rs1;
+    //         bit [2:0]  funct3;
+    //         bit [4:0]  imm_s_bot;
+    //         bit [6:0] opcode;
+    //     } s_type;
+
+    //     struct packed {
+    //         bit [2:0] extra;
+    //         bit [6:0] imm_b_top;
+    //         bit [$clog2(NUM_REGS)-1:0] rs2;
+    //         bit [$clog2(NUM_REGS)-1:0] rs1;
+    //         bit [2:0] funct3;
+    //         bit [4:0] imm_b_bot;
+    //         bit [6:0] opcode;
+    //     } b_type;
+
+    //     struct packed {
+    //         bit [3:0] extra;
+    //         bit [19:0] imm;
+    //         bit [$clog2(NUM_REGS)-1:0]  rd;
+    //         bit [6:0] opcode;
+    //     } j_type;
+
+    // } instr_t;
+
+    // typedef struct packed {
+    //     bit valid;
+    //     bit [63:0] order;
+    //     bit [31:0] inst;
+    //     bit [4:0] rs1_addr;
+    //     bit [4:0] rs2_addr;
+    //     bit [31:0] rs1_rdata;
+    //     bit [31:0] rs2_rdata;
+    //     bit [4:0] rd_addr;
+    //     bit [31:0] rd_wdata;
+    //     bit [31:0] pc_rdata;
+    //     bit [31:0] pc_wdata;
+    //     bit [31:0] mem_addr;
+    //     bit [3:0] mem_rmask;
+    //     bit [3:0] mem_wmask;
+    //     bit [31:0] mem_rdata;
+    //     bit [31:0] mem_wdata;
+    // } rvfi_commit_packet_t;
+
+    // typedef struct packed {
+    //     bit busy;
+        
+    //     bit [4:0] arch_rd;
+    //     bit [$clog2(NUM_REGS)-1:0] phys_rd;
+
+    //     bit rs1_valid;
+    //     bit [$clog2(NUM_REGS)-1:0] phys_rs1;
+
+    //     bit rs2_valid;
+    //     bit [$clog2(NUM_REGS)-1:0] phys_rs2;
+
+    //     bit [6:0] opcode;
+    //     bit [2:0] funct3;
+    //     bit [6:0] funct7_bit;
+
+    //     bit [31:0] pc;
+    //     bit [31:0] imm;
+
+    //     bit branch_pred;
+    //     bit regf_we;
+    //     bit aluc;
+
+    //     bit [$clog2(ROB_SIZE)-1:0] rob_index;
+
+    //     rvfi_commit_packet_t rvfi;
+    // } reservation_station_entry_t;
+
+    // typedef struct packed {
+    //     bit execute_valid;
+        
+    //     bit [4:0] arch_rd;
+    //     bit [$clog2(NUM_REGS)-1:0] phys_rd;
+
+    //     bit regf_we;
+    //     bit [31:0] phys_rd_val;
+
+    //     bit branch_mispredict;
+    //     bit [$clog2(ROB_SIZE)-1:0] rob_index;
+    //     rvfi_commit_packet_t rvfi;
+    // } data_bus_package_t;
+
+    // typedef struct packed {
+    //     bit done;
+        
+    //     bit [4:0] arch_rd;
+    //     bit [$clog2(NUM_REGS)-1:0] phys_rd;
+
+    //     bit branch_mispredict;
+    // } rob_entry_t;
     
 endpackage
 

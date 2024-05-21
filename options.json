@@ -1,10 +1,10 @@
 {
-    "clock"       : 1500,
-    "m_ext"       : false,
+    "clock"       : 1667,
+    "m_ext"       : true,
     "c_ext"       : false,
     "f_ext"       : false,
     "bmem_0_on_x" : false,
-    "dw_ip"       : [],
+    "dw_ip"       : ["DW_div_seq"],
     "synth": {
         "compile_ultra" : true,
         "ungroup"       : true,
