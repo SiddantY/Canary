@@ -14,7 +14,9 @@ import rv32i_types::*;
     input   logic   [NUM_REGS-1:0]             phys_valid_vector,
     input   logic   [$clog2(ROB_SIZE)-1:0]               rob_head,
     output  logic                       queue_empty,
-    output  logic                       queue_full, 
+    output  logic                       queue_full,
+    output  logic [$clog2(NUM_REGS)-1:0]    pr1_s_ld_st,
+    output  logic [$clog2(NUM_REGS)-1:0]    pr2_s_ld_st, 
     output  ld_st_queue_t               data_out,
     output  logic                       read_resp
 );
@@ -128,6 +130,9 @@ always_comb
                 data_queue[ls].rs1_ready = phys_valid_vector[data_queue[ls].pr1_s_ld_st];
                 data_queue[ls].rs2_ready = phys_valid_vector[data_queue[ls].pr2_s_ld_st];
             end
+        
+        pr1_s_ld_st = data_queue[read_ptr].pr1_s_ld_st;
+        pr2_s_ld_st = data_queue[read_ptr].pr2_s_ld_st;
     end
 
 

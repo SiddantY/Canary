@@ -107,6 +107,9 @@ logic remove_entry_mul;
 logic rs1_valid_rat_output_ldst, rs2_valid_rat_output_ldst; // These used by reservations station to decide when valid instructions
 logic [4:0] rs1_valid_index_ldst, rs2_valid_index_ldst; // used to index the rat to check for valid tings
 
+reservation_station_entry_t lte;
+
+
 
 
 /*
@@ -364,8 +367,8 @@ physical_regfile physical_regfile_dec
     .regf_we_ldst(execute_outputs_ldst.execute_valid), // comes from address unit
     
     .rd_v(execute_outputs.phys_rd_val), // comes from execute, !!! comb this since multiple write busses maybe queue
-    .rs1_s(line_to_execute.phys_rs1),
-    .rs2_s(line_to_execute.phys_rs2),
+    .rs1_s(lte.phys_rs1),
+    .rs2_s(lte.phys_rs2),
     .rd_s(execute_outputs.phys_rd), // comes from execute, !!! comb this since multiple write busses maybe queue
     .rs1_v(pr1_val),
     .rs2_v(pr2_val),
@@ -424,7 +427,6 @@ logic [63:0] min_order;
 logic mul_busy;
 logic execute_valid_mul_c;
 
-reservation_station_entry_t lte;
 logic execute_valid_alu_comb, evalte;
 
 always_ff @(posedge clk)

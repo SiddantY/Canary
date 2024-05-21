@@ -117,14 +117,14 @@ always_comb
         dmem_rmask = '0;
         dmem_wmask = '0;
         dmem_wdata = '0;
-        pr1_s_ldst = '0;
-        pr2_s_ldst = '0;
+        // pr1_s_ldst = '0;
+        // pr2_s_ldst = '0;
         dmem_addr_full = '0;
         if(ld_st_queue_data_out.opcode == op_b_store)
             begin
                 //set pr1_s_ld_st + pr2_s_ld_st
-                pr1_s_ldst = ld_st_queue_data_out.pr1_s_ld_st;
-                pr2_s_ldst = ld_st_queue_data_out.pr2_s_ld_st;
+                // pr1_s_ldst = ld_st_queue_data_out.pr1_s_ld_st;
+                // pr2_s_ldst = ld_st_queue_data_out.pr2_s_ld_st;
 
                 dmem_addr_full = dmem_sum;
                 dmem_addr = {dmem_sum[31:2], 2'b00};
@@ -148,8 +148,8 @@ always_comb
         else if(ld_st_queue_data_out.opcode == op_b_load)
             begin
                 //set pr1_s_ld_st + pr2_s_ld_st
-                pr1_s_ldst = ld_st_queue_data_out.pr1_s_ld_st;
-                pr2_s_ldst = ld_st_queue_data_out.pr2_s_ld_st;
+                // pr1_s_ldst = ld_st_queue_data_out.pr1_s_ld_st;
+                // pr2_s_ldst = ld_st_queue_data_out.pr2_s_ld_st;
 
                 dmem_addr_full = dmem_sum;
                 dmem_addr = {dmem_sum[31:2], 2'b00};
@@ -228,7 +228,9 @@ load_store_queue_dec_1
     .read_enable(mem_ready && ~flush),
     .phys_valid_vector(phys_valid_vector),
     .queue_empty(ld_st_q_empty),
-    .queue_full(ld_st_q_full), 
+    .queue_full(ld_st_q_full),
+    .pr1_s_ld_st(pr1_s_ldst),
+    .pr2_s_ld_st(pr2_s_ldst),
     .data_out(ld_st_queue_data_out),
     .read_resp(ld_st_q_read_resp)
 );

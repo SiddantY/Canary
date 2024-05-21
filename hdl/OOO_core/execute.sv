@@ -19,6 +19,12 @@ logic [2:0] aluop; // alu operand based on opcode + funct3
 logic [31:0] jalr_sum;
 logic jalr_cout;
 
+logic [31:0] jal_sum;
+logic jal_cout;
+
+logic [31:0] br_sum;
+logic br_cout;
+
 always_comb
     begin
         // this decides whether to use 0, pc or rs1 val based on opcode
@@ -173,11 +179,11 @@ always_comb
             end
         else if(line_to_execute.inst[6:0] == op_b_jal)
             begin
-                execute_outputs.rvfi.pc_wdata = line_to_execute.pc + {{12{line_to_execute.inst[31]}}, line_to_execute.inst[19:12], line_to_execute.inst[20], line_to_execute.inst[30:21], 1'b0};
+                execute_outputs.rvfi.pc_wdata = jal_sum;
             end
         else if(line_to_execute.inst[6:0] == op_b_br && f[0])
             begin
-                execute_outputs.rvfi.pc_wdata = line_to_execute.pc + line_to_execute.imm;
+                execute_outputs.rvfi.pc_wdata = br_sum;
             end
         else
             begin
@@ -205,6 +211,22 @@ carry_look_ahead_adder jalr_addr(
     .sum(jalr_sum),
     .cout(jalr_cout),
 	.a(pr1_val),
+    .b(line_to_execute.imm),
+    .cin(1'b0)
+);
+
+carry_look_ahead_adder jal_adder(
+    .sum(jal_sum),
+    .cout(jal_cout),
+	.a({{12{line_to_execute.inst[31]}}, line_to_execute.inst[19:12], line_to_execute.inst[20], line_to_execute.inst[30:21], 1'b0}),
+    .b(line_to_execute.pc),
+    .cin(1'b0)
+);
+
+carry_look_ahead_adder br_addr(
+    .sum(br_sum),
+    .cout(br_cout),
+	.a(line_to_execute.pc),
     .b(line_to_execute.imm),
     .cin(1'b0)
 );

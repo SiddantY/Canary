@@ -77,11 +77,18 @@ module actual_mult(
 	logic [63:0] u_l61, v_l61;
 
 	FA l61 (u_l51[63:0], v_l51[63:0], u_l52[63:0], u_l61[63:0], v_l61[63:0]);
+
+	logic [63:0] u1_l61, v1_l61;
+	always_ff @(posedge clk)
+		begin
+			u1_l61 <= u_l61;
+			v1_l61 <= v_l61;
+		end
 	
 	// The following is for level 7 of wallace tree
 	logic [63:0] u_l71, v_l71;
 
-	FA l71 (u_l61[63:0], v_l61[63:0], v_l52[63:0], u_l71[63:0], v_l71[63:0]);
+	FA l71 (u1_l61[63:0], v1_l61[63:0], v_l52[63:0], u_l71[63:0], v_l71[63:0]);
 
 	// The following is for level 8 of wallace tree
 	logic [63:0] u_l81, v_l81;

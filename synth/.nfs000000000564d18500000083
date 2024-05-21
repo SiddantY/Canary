@@ -1,7 +1,7 @@
 #@ # 
 #@ # Running dc_shell Version R-2020.09-SP4 for linux64 -- Mar 02, 2021
-#@ # Date:   Tue May 21 05:24:24 2024
-#@ # Run by: sky2@fastx3-17.ews.illinois.edu
+#@ # Date:   Tue May 21 16:45:33 2024
+#@ # Run by: sky2@fastx3-02.ews.illinois.edu
 #@ 
 
 source /software/Synopsys-2021_x86_64/syn/R-2020.09-SP4/admin/setup/.synopsys_dc.setup
@@ -43190,15 +43190,10 @@ gui_start
 #@ # -- End source /software/Synopsys-2021_x86_64/syn/R-2020.09-SP4/auxx/tcllib/lib/iwidgets4.1/watch.itk
 
 gui_set_pref_value -category {SelectByNamePalette} -key {ObjectType} -value {LeafCells}
-change_selection [get_cells fetch_dec_1/pc_rec/pc_tmp_reg_31_]
-change_selection [get_cells U2994]
-change_selection [get_cells U1509]
-change_selection [get_cells U1472]
-change_selection [get_cells U1587]
-change_selection [get_cells U3062]
-change_selection [get_cells U1815]
-change_selection [get_cells U1831]
-change_selection [get_cells U1830]
-change_selection [get_cells U1587]
-change_selection [get_cells U1697]
-change_selection [get_cells U1406]
+change_selection [get_cells execute_dec]
+change_selection [get_cells execute_dec/U9]
+change_selection [get_cells execute_dec/U904]
+change_selection [get_cells execute_dec/U1342]
+change_selection [get_cells execute_dec/U330]
+change_selection [get_cells execute_dec/U1622]
+change_selection [get_TimingPaths {{No Representation}}]

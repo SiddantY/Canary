@@ -29,6 +29,17 @@ import rv32i_types::*;
             if (regf_we_ldst && (rd_s_ldst != 6'd0)) begin
                 data[rd_s_ldst] <= rd_v_ldst;
             end
+
+            rs1_v <= (rs1_s != 6'd0) ? data[rs1_s] : '0;
+            rs2_v <= (rs2_s != 6'd0) ? data[rs2_s] : '0;
+
+            rs1_v_mul <= (rs1_s_mul != 6'd0) ? data[rs1_s_mul] : '0;
+
+            rs2_v_mul <= (rs2_s_mul != 6'd0) ? data[rs2_s_mul] : '0;
+
+            rs1_v_ldst <= (rs1_s_ldst != 6'd0) ? data[rs1_s_ldst] : '0;
+
+            rs2_v_ldst <= (rs2_s_ldst != 6'd0) ? data[rs2_s_ldst] : '0;
         end
     end
 
@@ -42,11 +53,11 @@ import rv32i_types::*;
             //     end
             // else
             //     begin
-                    rs1_v = (rs1_s != 6'd0) ? data[rs1_s] : '0;
+                    // rs1_v = (rs1_s != 6'd0) ? data[rs1_s] : '0;
 
-                    rs1_v_mul = (rs1_s_mul != 6'd0) ? data[rs1_s_mul] : '0;
+                    // rs1_v_mul = (rs1_s_mul != 6'd0) ? data[rs1_s_mul] : '0;
 
-                    rs1_v_ldst = (rs1_s_ldst != 6'd0) ? data[rs1_s_ldst] : '0;
+                    // rs1_v_ldst = (rs1_s_ldst != 6'd0) ? data[rs1_s_ldst] : '0;
             //      end
             
             // if(rd_s == rs2_s)
@@ -55,11 +66,11 @@ import rv32i_types::*;
             //     end
             // else
             //     begin
-                    rs2_v = (rs2_s != 6'd0) ? data[rs2_s] : '0;
+                    // rs2_v = (rs2_s != 6'd0) ? data[rs2_s] : '0;
 
-                    rs2_v_mul = (rs2_s_mul != 6'd0) ? data[rs2_s_mul] : '0;
+                    // rs2_v_mul = (rs2_s_mul != 6'd0) ? data[rs2_s_mul] : '0;
 
-                    rs2_v_ldst = (rs2_s_ldst != 6'd0) ? data[rs2_s_ldst] : '0;
+                    // rs2_v_ldst = (rs2_s_ldst != 6'd0) ? data[rs2_s_ldst] : '0;
             //     end
            
         end

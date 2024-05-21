@@ -28,7 +28,7 @@ import rv32i_types::*;
     `define SIGNED_SIGNED_MUL     2'b01
     `define SIGNED_UNSIGNED_MUL   2'b10
 
-    enum int unsigned {IDLE, MUL, MUL1, DONE} curr_state, next_state;
+    enum int unsigned {IDLE, MUL, MUL1, MUL2, DONE} curr_state, next_state;
     localparam int OP_WIDTH_LOG = $clog2(OPERAND_WIDTH);
     logic [OP_WIDTH_LOG-1:0] counter;
     logic [OPERAND_WIDTH-1:0] b_reg, a_reg;
@@ -41,7 +41,8 @@ import rv32i_types::*;
             unique case (curr_state)
                 IDLE:    next_state = start ? MUL : IDLE;
                 MUL:     next_state = MUL1;
-                MUL1:    next_state = DONE;
+                MUL1:     next_state = MUL2;
+                MUL2:    next_state = DONE;
                 DONE:    next_state = start ? DONE : IDLE;
                 default: next_state = curr_state;
             endcase
@@ -112,7 +113,8 @@ always_ff @ (posedge clk)
                         end
                     end
                     MUL: ;
-                    MUL1:
+                    MUL1: ;
+                    MUL2:
                         begin
                             // does anything go here ?
                             accumulator <= mul_out;
