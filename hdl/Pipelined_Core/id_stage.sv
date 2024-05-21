@@ -357,7 +357,7 @@ always_comb
 
     end : setting_if_id_reg_next
 
-regfile rf_dec_1
+pipeline_regfile rf_dec_1
 (
     .clk(clk),
     .rst(rst),

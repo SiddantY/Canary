@@ -1,4 +1,4 @@
-module cpu
+module ooo_cpu
 import rv32i_types::*;
 (
     input   logic           clk,
@@ -29,4 +29,4 @@ import rv32i_types::*;
 );
 
 
-endmodule : cpu
+endmodule : ooo_cpu

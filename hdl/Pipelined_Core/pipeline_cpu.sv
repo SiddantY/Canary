@@ -1,4 +1,4 @@
-module cpu
+module pipeline_cpu
 import rv32i_types::*;
 (
     // Explicit dual port connections when caches are not integrated into design yet (Before CP3)
@@ -262,4 +262,4 @@ always_comb
             end
 
     end : rvfi_signals
-endmodule : cpu
+endmodule : pipeline_cpu

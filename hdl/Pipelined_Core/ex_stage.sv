@@ -155,7 +155,7 @@ forwarding_unit forwarding_unit_dec_1
     .r2_mux_select(r2_mux_select)
 );
 
-alu alu_dec_1(
+pipeline_alu alu_dec_1(
     .aluc(id_ex_reg.alu_or_cmp),
     .aluop(id_ex_reg.alu_op),
     .a(a), 

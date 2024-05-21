@@ -1,4 +1,4 @@
-module regfile
+module pipeline_regfile
 (
     input   logic           clk,
     input   logic           rst,
@@ -26,4 +26,4 @@ module regfile
             rs2_v = (rs2_s != 5'd0) ? data[rs2_s] : '0;
         end
 
-endmodule : regfile
+endmodule : pipeline_regfile

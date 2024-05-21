@@ -1,4 +1,4 @@
-module alu
+module pipeline_alu
 import rv32i_types::*;
 (
     input   logic           aluc,
@@ -47,4 +47,4 @@ import rv32i_types::*;
         endcase
     end
 
-endmodule : alu
+endmodule : pipeline_alu

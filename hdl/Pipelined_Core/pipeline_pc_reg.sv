@@ -1,4 +1,4 @@
-module pc_reg(
+module pipeline_pc_reg(
     input   logic           clk,
     input   logic           rst,
 

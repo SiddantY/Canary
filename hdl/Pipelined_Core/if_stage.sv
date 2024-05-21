@@ -46,7 +46,7 @@ always_comb
         if_id_reg_next.rvfi.monitor_pc_wdata = pc + 3'b100; // will change in execute if jal/jalr/branch
     end
 
-pc_reg pc_reg_dec_1(
+pipeline_pc_reg pc_reg_dec_1(
     .clk(clk),
     .rst(rst),
 
