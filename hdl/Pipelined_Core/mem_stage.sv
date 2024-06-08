@@ -123,7 +123,7 @@ always_comb
         dmem_wmask = '0;
         dmem_wdata = '0;
 
-        if(ex_mem_reg.mem_read && ~p2o && ex_mem_reg.rvfi.monitor_valid) // load
+        if(ex_mem_reg.mem_read /*&& ~p2o */&& ex_mem_reg.rvfi.monitor_valid) // load
             begin
                 dmem_addr = dmem_addr_holder;
                 dmem_rmask = dmem_rmask_holder;
@@ -132,7 +132,7 @@ always_comb
 
             end
         
-        if(ex_mem_reg.mem_write && ~p2o && ex_mem_reg.rvfi.monitor_valid) // store
+        if(ex_mem_reg.mem_write /*&& ~p2o*/ && ex_mem_reg.rvfi.monitor_valid) // store
             begin
                 
                 dmem_addr = dmem_addr_holder;

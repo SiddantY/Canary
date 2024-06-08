@@ -91,10 +91,18 @@ package rv32i_types;
     // Piplined core register defs 
 
     typedef struct packed {
+        logic [31:0] pc;
+        logic [31:0] instr;
+        logic was_pred_taken;
+        logic [31:0] br_target;
+        // logic [$clog2(GBHT_ENTRIES)-1:0] gbht_idx;
+    } iq_entry_t;
+    
+    typedef struct packed {
         bit [31:0] pc;
         bit        branch_pred;
         bit [31:0] predicted_pc;
-        
+        bit [31:0] inst;
         rvfi_data_t rvfi;
     } if_id_reg_t;
 

@@ -5,36 +5,50 @@ import rv32i_types::*;
     input   logic           clk,
     input   logic           rst,
 
-    output  logic   [31:0]  imem_addr,
-    output  logic   [3:0]   imem_rmask,
-    input   logic   [31:0]  imem_rdata,
-    input   logic           imem_resp,
+    // output  logic   [31:0]  imem_addr,
+    // output  logic   [3:0]   imem_rmask,
+    // input   logic   [31:0]  imem_rdata,
+    // input   logic           imem_resp,
 
-    output  logic   [31:0]  dmem_addr,
-    output  logic   [3:0]   dmem_rmask,
-    output  logic   [3:0]   dmem_wmask,
-    input   logic   [31:0]  dmem_rdata,
-    output  logic   [31:0]  dmem_wdata,
-    input   logic           dmem_resp
+    // output  logic   [31:0]  dmem_addr,
+    // output  logic   [3:0]   dmem_rmask,
+    // output  logic   [3:0]   dmem_wmask,
+    // input   logic   [31:0]  dmem_rdata,
+    // output  logic   [31:0]  dmem_wdata,
+    // input   logic           dmem_resp
 
     // Single memory port connection when caches are integrated into design (CP3 and after)
     
-    // output logic   [31:0]      bmem_addr,
-    // output logic               bmem_read,
-    // output logic               bmem_write,
-    // output logic   [63:0]      bmem_wdata,
-    // input logic               bmem_ready,
+    output logic   [31:0]      bmem_addr,
+    output logic               bmem_read,
+    output logic               bmem_write,
+    output logic   [63:0]      bmem_wdata,
+    input logic                bmem_ready,
 
-    // input logic   [31:0]      bmem_raddr,
-    // input logic   [63:0]      bmem_rdata,
-    // input logic               bmem_rvalid
+    input logic   [31:0]       bmem_raddr,
+    input logic   [63:0]       bmem_rdata,
+    input logic                bmem_rvalid
     
 );
+
+/* fetch <---> I-cache  */
+logic [31:0]  imem_addr;
+logic [3:0]   imem_rmask;
+logic [31:0]  imem_rdata;
+logic imem_resp;
+
+/* dmem <---> D-cache port signals */
+logic [31:0]  dmem_addr;
+logic [3:0]   dmem_rmask, dmem_wmask;
+logic [31:0]  dmem_rdata, dmem_wdata;
+logic dmem_resp;
 
 logic [63:0] order;
 
 logic istall;
 logic dstall;
+logic IQ_empty;
+logic IQ_pop;
 
 // make dmem_happy_for_now
 // assign dmem_addr = '0;
@@ -81,7 +95,7 @@ always_ff @(posedge clk) // reworks according to monitor_valid @TODO
             end
         else
             begin
-                if(mem_wb_reg.rvfi.monitor_valid && ~dstall && ~istall)
+                if(mem_wb_reg.rvfi.monitor_valid && ~dstall && IQ_pop)
                     begin
                         order <= order + 1'b1;
                     end
@@ -101,17 +115,17 @@ always_ff @(posedge clk)
             end
         else
             begin
-                if(istall | dstall) // or dstall
+                if(~IQ_pop | dstall) // or dstall
                     begin
                         if_id_reg <= br_en ? '0 : if_id_reg;
-                        id_ex_reg <= id_ex_reg;
-                        ex_mem_reg <= ex_mem_reg;
-                        mem_wb_reg <= mem_wb_reg;
+                        id_ex_reg <= /*br_en ? '0 : */id_ex_reg;
+                        ex_mem_reg <= /*br_en & ~dstall ? ex_mem_reg_next :*/ ex_mem_reg;
+                        mem_wb_reg <= /*br_en & ~dstall ? mem_wb_reg_next :*/ mem_wb_reg;
                     end
                 else
                     begin
                         if_id_reg <= br_en ? '0 : if_id_reg_next;
-                        id_ex_reg <= br_en ? '0 : id_ex_reg_next;
+                        id_ex_reg <= /*br_en ? '0 : */id_ex_reg_next;
                         ex_mem_reg <= ex_mem_reg_next;
                         mem_wb_reg <= mem_wb_reg_next;
                     end
@@ -142,6 +156,7 @@ if_stage if_stage_dec_1(
     .imem_addr(imem_addr),
     .imem_rmask(imem_rmask),
     .imem_resp(imem_resp),
+    .imem_rdata(imem_rdata),
 
     .mispredict_br_en(br_en), // ouput from execute stage @TODO
     .mispredict_pc(mispredict_pc),
@@ -150,7 +165,8 @@ if_stage if_stage_dec_1(
 
     .istall(istall),
     .dstall(dstall),
-
+    .IQ_empty(IQ_empty),
+    .IQ_pop(IQ_pop),
     .if_id_reg_next(if_id_reg_next)
 );
 
@@ -159,7 +175,7 @@ id_stage id_stage_dec_1 // could split fetch into interface with imem and receiv
     .clk(clk),
     .rst(rst),
 
-    .inst(imem_rdata), // imem_rdata
+    // .inst(imem_rdata), // imem_rdata
     .if_id_reg(if_id_reg),
 
     .valid_write(monitor_valid),
@@ -210,6 +226,7 @@ mem_stage mem_stage_dec_1
     .dmem_wdata(dmem_wdata),
 
     .dstall(dstall),
+
     .mem_wb_reg_next(mem_wb_reg_next)
 );
 
@@ -217,6 +234,34 @@ wb_stage wb_stage_dec_1
 (
     .mem_wb_reg(mem_wb_reg),
     .rd_v(rd_v)
+);
+
+cache_unit cache_unit_1
+(
+    .clk(clk),
+    .rst(rst),
+    .imem_addr(imem_addr),
+    .imem_rmask(imem_rmask),
+    .imem_rdata(imem_rdata),
+    .imem_resp(imem_resp),
+
+    .dmem_addr(dmem_addr),
+    .dmem_rmask(dmem_rmask), 
+    .dmem_wmask(dmem_wmask),
+    .dmem_rdata(dmem_rdata), 
+    .dmem_wdata(dmem_wdata),
+    .dmem_resp(dmem_resp),
+
+    /* cache <---> bmem */
+    .bmem_addr(bmem_addr),
+    .bmem_read(bmem_read),
+    .bmem_write(bmem_write),
+    .bmem_wdata(bmem_wdata),
+    .bmem_ready(bmem_ready),
+
+    // ]      bmem_raddr,
+    .bmem_rdata(bmem_rdata),
+    .bmem_rvalid(bmem_rvalid)
 );
 
 always_comb
@@ -243,7 +288,7 @@ always_comb
             end
         else
             begin
-                monitor_valid = mem_wb_reg.rvfi.monitor_valid && ~dstall && ~istall;
+                monitor_valid = mem_wb_reg.rvfi.monitor_valid && ((IQ_pop && ~dstall));
                 monitor_order = order;
                 monitor_inst = mem_wb_reg.rvfi.monitor_inst;
                 monitor_rs1_addr = mem_wb_reg.rvfi.monitor_rs1_addr;
