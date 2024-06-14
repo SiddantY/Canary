@@ -30,7 +30,7 @@ logic br_while_fetch;
 
 always_ff @ (posedge clk) 
     begin
-        if(mispredict_br_en && !imem_resp) begin
+        if(mispredict_br_en) begin
             br_while_fetch <= '1;
         end
         if((br_while_fetch == '1 && imem_resp) || rst) begin
@@ -42,7 +42,7 @@ always_comb
     begin
         // istall = IQ_empty; // NEW definition for istall w/ IQ
         IQ_flush = mispredict_br_en && !IQ_empty; // flush IQ on br mispred
-        imem_rmask = IQ_full ? 4'd0 : 4'b1111;
+        imem_rmask =  IQ_full ? 4'd0 : 4'b1111;
         // imem_addr = (dstall) ? pc_prev : pc;
         imem_addr = pc;
         IQ_in = '0;
@@ -52,7 +52,7 @@ always_comb
             begin
                 istall = 1'b0;
                 // push to instr q
-                if(!IQ_full && !br_while_fetch && !mispredict_br_en) IQ_push = 1'b1;
+                if((!IQ_full && !mispredict_br_en) || br_while_fetch) IQ_push = 1'b1;
                 IQ_in.instr = imem_rdata;
                 IQ_in.pc = imem_addr;
             end
