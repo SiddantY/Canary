@@ -37,22 +37,41 @@ always_ff @ (posedge clk)
             br_while_fetch <= '0;
         end
     end
-
+logic mispred_off;
+always_ff @ (posedge clk) begin
+    if(mispredict_br_en && br_while_fetch) begin
+        mispred_off <= '1;
+    end
+    else if (mispred_off && imem_resp || rst) begin
+        mispred_off <= '0;
+    end
+end
 always_comb
     begin
         // istall = IQ_empty; // NEW definition for istall w/ IQ
         IQ_flush = mispredict_br_en && !IQ_empty; // flush IQ on br mispred
         imem_rmask =  IQ_full ? 4'd0 : 4'b1111;
-        // imem_addr = (dstall) ? pc_prev : pc;
-        imem_addr = pc;
+        // imem_addr = (mispredict_br_en) ? mispredict_pc : pc;
+        if(br_while_fetch) begin
+            imem_addr = pc_prev;
+        end
+        else begin
+            imem_addr = pc;
+        end
+        // imem_addr = pc;
         IQ_in = '0;
         IQ_push = '0;
         IQ_pop = '0;
         if(imem_resp)
             begin
-                istall = 1'b0;
+                if(!br_while_fetch) begin
+                    istall = 1'b0;
+                end
+                else begin
+                    istall = 1'b1;
+                end
                 // push to instr q
-                if((!IQ_full && !mispredict_br_en) || br_while_fetch) IQ_push = 1'b1;
+                if(!IQ_full && !mispredict_br_en && !br_while_fetch || mispred_off) IQ_push = 1'b1;
                 IQ_in.instr = imem_rdata;
                 IQ_in.pc = imem_addr;
             end
@@ -63,7 +82,7 @@ always_comb
 
 
         // popping from IQ
-        if(!IQ_empty) 
+        if(!IQ_empty && !dstall) 
             begin
                 IQ_pop = 1'b1;
                 if_id_reg_next.inst = IQ_out.instr;

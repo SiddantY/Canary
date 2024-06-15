@@ -22,7 +22,7 @@ always_ff @(posedge clk)
             end
         else // pc <- pc_next 
             begin
-                if(~stall)
+                if(~stall || mispredict_br_en)
                     begin
                         pc <= pc_next;
                         pc_prev <= pc;

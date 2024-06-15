@@ -68,6 +68,7 @@ logic [31:0] rd_v;
 logic br_en;
 logic [31:0] mispredict_pc;
 
+
 // rvfi signals
 logic monitor_valid;
 logic [63:0] monitor_order;
@@ -115,17 +116,17 @@ always_ff @(posedge clk)
             end
         else
             begin
-                if(~IQ_pop | dstall) // or dstall
+                if(~IQ_pop | dstall ) // or dstall
                     begin
                         if_id_reg <= br_en ? '0 : if_id_reg;
-                        id_ex_reg <= /*br_en ? '0 : */id_ex_reg;
+                        id_ex_reg <= /*br_en ? '0 :*/ id_ex_reg;
                         ex_mem_reg <= /*br_en & ~dstall ? ex_mem_reg_next :*/ ex_mem_reg;
                         mem_wb_reg <= /*br_en & ~dstall ? mem_wb_reg_next :*/ mem_wb_reg;
                     end
                 else
                     begin
                         if_id_reg <= br_en ? '0 : if_id_reg_next;
-                        id_ex_reg <= /*br_en ? '0 : */id_ex_reg_next;
+                        id_ex_reg <= br_en ? '0 : id_ex_reg_next;
                         ex_mem_reg <= ex_mem_reg_next;
                         mem_wb_reg <= mem_wb_reg_next;
                     end
