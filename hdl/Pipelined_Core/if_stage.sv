@@ -82,6 +82,8 @@ always_comb
 
 
         // popping from IQ
+        if_id_reg_next.rvfi.monitor_valid = 1'b0;
+
         if(!IQ_empty && !dstall) 
             begin
                 IQ_pop = 1'b1;

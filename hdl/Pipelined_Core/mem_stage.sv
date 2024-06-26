@@ -169,7 +169,7 @@ always_comb
         mem_wb_reg_next.mem_read = ex_mem_reg.mem_read;
 
         // rvfi signals
-        mem_wb_reg_next.rvfi.monitor_valid = ex_mem_reg.rvfi.monitor_valid;
+        mem_wb_reg_next.rvfi.monitor_valid = ex_mem_reg.rvfi.monitor_valid && !dstall;
         mem_wb_reg_next.rvfi.monitor_order = ex_mem_reg.rvfi.monitor_order; 
         mem_wb_reg_next.rvfi.monitor_inst = ex_mem_reg.rvfi.monitor_inst;
         mem_wb_reg_next.rvfi.monitor_rs1_addr = ex_mem_reg.rvfi.monitor_rs1_addr; 

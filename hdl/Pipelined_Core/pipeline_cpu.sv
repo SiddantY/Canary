@@ -68,6 +68,8 @@ logic [31:0] rd_v;
 logic br_en;
 logic [31:0] mispredict_pc;
 
+// prevent double commits
+logic commit;
 
 // rvfi signals
 logic monitor_valid;
@@ -87,6 +89,13 @@ logic [3:0] monitor_mem_wmask;
 logic [31:0] monitor_mem_rdata;
 logic [31:0] monitor_mem_wdata;
 
+// always_ff @(posedge clk) begin : commit_ctrl
+//     if(rst) commit <= '0;
+//     else begin
+//         if(mem_wb_reg.rvfi.monitor_valid && ~dstall) commit <= '1;
+
+//     end
+// end : commit_ctrl
 always_ff @(posedge clk) // reworks according to monitor_valid @TODO
     begin : order_control_block
         
@@ -116,22 +125,32 @@ always_ff @(posedge clk)
             end
         else
             begin
-                if(~IQ_pop | dstall ) // or dstall
+                if(~IQ_pop | dstall ) // stall decode and execute if there is a stall in back end, mem and wb continue
                     begin
                         if_id_reg <= br_en ? '0 : if_id_reg;
                         id_ex_reg <= /*br_en ? '0 :*/ id_ex_reg;
                         ex_mem_reg <= /*br_en & ~dstall ? ex_mem_reg_next :*/ ex_mem_reg;
-                        mem_wb_reg <= /*br_en & ~dstall ? mem_wb_reg_next :*/ mem_wb_reg;
+                        // mem_wb_reg <= /*br_en & ~dstall ? mem_wb_reg_next :*/ mem_wb_reg_next;
                     end
                 else
                     begin
                         if_id_reg <= br_en ? '0 : if_id_reg_next;
                         id_ex_reg <= br_en ? '0 : id_ex_reg_next;
                         ex_mem_reg <= ex_mem_reg_next;
-                        mem_wb_reg <= mem_wb_reg_next;
                     end
+                // if(!IQ_pop | dstall) begin
+                //     mem_wb_reg <= mem_wb_reg;
+                // end
+                // else begin
+                //     mem_wb_reg <= mem_wb_reg_next;
+
+                // end
+                // ALTERNATIVE: keep track of valid (iq pops) within the stage registers, let it propogate to mem_wb
+                // if_id_reg <= if_id_reg_next;
+                // id_ex_reg <= id_ex_reg_next;
+                // ex_mem_reg <= ex_mem_reg_next;
+                mem_wb_reg <= mem_wb_reg_next;
             end
-    
     end : pipeline_register_control
 
 logic [31:0] ld_forward_val;
@@ -289,7 +308,7 @@ always_comb
             end
         else
             begin
-                monitor_valid = mem_wb_reg.rvfi.monitor_valid && ((IQ_pop && ~dstall));
+                monitor_valid = mem_wb_reg.rvfi.monitor_valid && ~dstall;
                 monitor_order = order;
                 monitor_inst = mem_wb_reg.rvfi.monitor_inst;
                 monitor_rs1_addr = mem_wb_reg.rvfi.monitor_rs1_addr;
