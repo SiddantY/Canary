@@ -162,5 +162,26 @@ pipeline_alu alu_dec_1(
     .b(b),
     .f(f)
 );
+// DW_div_seq #(.a_width(32), .b_width(32), 
+// .tc_mode(0), .num_cyc(15), .rst_mode(0), .input_mode(1), .output_mode(1), .early_start(0)
+// ) divider (
+//     .clk(clk), .rst_n(~rst),
+//     .hold(div_hold), .start(div_start),
+//     .a(div_a), .b(div_b),
+//     .complete(div_complete),
+//     .quotient(quotient),
+//     .remainder(remainder),
+//     .divide_by_0(divide_by_0)
+// );
 
+// shift_add_multiplier multiplier (
+//     .clk(clk), .rst(rst),
+//     .start(mul_start),
+//     .mul_type(mul_type),
+//     .a(mul_a), 
+//     .b(mul_b),
+//     .p(mul_out),
+//     .done(mul_done),
+//     .br_mispredict(br_mispredict)
+// );
 endmodule
