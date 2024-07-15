@@ -19,6 +19,8 @@ import rv32i_types::*;
     input data_bus_package_t execute_outputs,
     input data_bus_package_t execute_outputs_mul,
     input data_bus_package_t execute_outputs_ldst,
+    input logic branch_recovery,
+    input logic [$clog2(ROB_SIZE)-1:0] br_issue_ptr,
 
     output logic rob_empty,
     output logic rob_full,
@@ -30,7 +32,13 @@ import rv32i_types::*;
     output logic flush,
     output logic flush_comb,
     output logic [$clog2(ROB_SIZE)-1:0] commit_ptr,
-    output logic [31:0] missed_pc
+    output logic [31:0] missed_pc,
+
+    input logic [63:0] order_ind,
+    input logic [63:0] order,
+
+    input logic [$clog2(NUM_BRATS)-1:0] branch_resolved_index,
+    input logic [$clog2(NUM_BRATS)-1:0] current_brat
 );
 
 
@@ -38,7 +46,8 @@ rob_entry_t rob[ROB_SIZE];
 rvfi_commit_packet_t rvfi_rob_mirror[ROB_SIZE];
 
 logic [$clog2(ROB_SIZE)-1:0] issue_ptr;
-// logic [$clog2(ROB_SIZE)-1:0] commit_ptr;
+
+logic [$clog2(ROB_SIZE)-1:0] ebrl;
 
 always_ff @(posedge clk)
     begin
@@ -66,7 +75,20 @@ always_ff @(posedge clk)
                         rob[issue_ptr].phys_rd <= phys_rd;
                         rob[issue_ptr].arch_rd <= arch_rd;
 
+                        rvfi_rob_mirror[issue_ptr].order <= order;
+
                         issue_ptr <= issue_ptr + 1'b1;
+                    end
+                
+                if(update_rob_valid_ldst && rob[valid_intruction_index_ldst].instruction != '0) // if an instruction is done committing mark it as done
+                    begin
+                        rob[valid_intruction_index_ldst].done <= 1'b1;
+                        rob[valid_intruction_index_ldst].branch_mismatch <= 1'b0;
+                        rob[valid_intruction_index_ldst].current_brat <= execute_outputs_ldst.current_brat;
+                        rvfi_rob_mirror[valid_intruction_index_ldst] <= execute_outputs_ldst.rvfi;
+                        rvfi_rob_mirror[valid_intruction_index_ldst].valid <= 1'b1;
+
+                        // rob[valid_intruction_index].rvfi <= execute_outputs.rvfi;
                     end
                 
                 if(update_rob_valid && rob[valid_intruction_index].instruction != '0) // if an instruction is done committing mark it as done
@@ -74,6 +96,7 @@ always_ff @(posedge clk)
                         
                         rob[valid_intruction_index].done <= 1'b1;
                         rob[valid_intruction_index].branch_mismatch <= execute_outputs.branch_mismatch;
+                        rob[valid_intruction_index].current_brat <= execute_outputs.current_brat;
                         rvfi_rob_mirror[valid_intruction_index] <= execute_outputs.rvfi;
                         rvfi_rob_mirror[valid_intruction_index].valid <= 1'b1;
 
@@ -84,50 +107,100 @@ always_ff @(posedge clk)
                     begin
                         rob[valid_intruction_index_mul].done <= 1'b1;
                         rob[valid_intruction_index_mul].branch_mismatch <= 1'b0;
+                        rob[valid_intruction_index_mul].current_brat <= execute_outputs_mul.current_brat;
                         rvfi_rob_mirror[valid_intruction_index_mul] <= execute_outputs_mul.rvfi;
                         rvfi_rob_mirror[valid_intruction_index_mul].valid <= 1'b1;
 
                         // rob[valid_intruction_index].rvfi <= execute_outputs.rvfi;
                     end
+            
                 
-                if(update_rob_valid_ldst && rob[valid_intruction_index_ldst].instruction != '0) // if an instruction is done committing mark it as done
+                if(branch_recovery)
                     begin
-                        rob[valid_intruction_index_ldst].done <= 1'b1;
-                        rob[valid_intruction_index_ldst].branch_mismatch <= 1'b0;
-                        rvfi_rob_mirror[valid_intruction_index_ldst] <= execute_outputs_ldst.rvfi;
-                        rvfi_rob_mirror[valid_intruction_index_ldst].valid <= 1'b1;
+                        issue_ptr <= br_issue_ptr + 1'b1;
 
-                        // rob[valid_intruction_index].rvfi <= execute_outputs.rvfi;
+                        for(int af = 0; af < ROB_SIZE; af++)
+                            begin
+                                if(rob[af].current_brat > branch_resolved_index
+                                && rvfi_rob_mirror[af].order >= order_ind)
+                                    begin
+                                        rob[af].done <= 1'b0;
+                                    end
+                            end
+                        
+                        // if(br_issue_ptr + 1'b1 < commit_ptr)
+                        //     begin
+                        //         for(ebrl = br_issue_ptr + 1'b1; ebrl < commit_ptr; ebrl++)
+                        //             begin
+                        //                 if(rob[ebrl].current_brat > branch_resolved_index)
+                        //                     //&& rvfi_rob_mirror[af].order >= order_ind)
+                        //                     begin
+                        //                         rob[ebrl].done <= 1'b0;
+                        //                     end
+                        //             end
+                        //     end
+                        // else
+                        //     begin
+                        //         for(ebrl = br_issue_ptr + 1'b1; ebrl < ROB_SIZE; ebrl++)
+                        //             begin
+                        //                 if(rob[ebrl].current_brat > branch_resolved_index)
+                        //                     //&& rvfi_rob_mirror[af].order >= order_ind)
+                        //                     begin
+                        //                         rob[ebrl].done <= 1'b0;
+                        //                     end
+                        //             end
+
+                        //         for(ebrl = 0; ebrl < commit_ptr; ebrl++)
+                        //             begin
+                        //                 if(rob[ebrl].current_brat > branch_resolved_index)
+                        //                     //&& rvfi_rob_mirror[af].order >= order_ind)
+                        //                     begin
+                        //                         rob[ebrl].done <= 1'b0;
+                        //                     end
+                        //             end
+                        //     end
+                        
+                        
+                        rob[br_issue_ptr + 1'b1].done <= 1'b0;
                     end
                 
                 if(rob[commit_ptr].done) // if the top of the queue is done, do valid things
                     begin
-                        rob[commit_ptr].done <= 1'b0;
-                        rob_line_to_commit <= rob[commit_ptr];
-                        valid_commit <= 1'b1;
-                        committer <= rvfi_rob_mirror[commit_ptr];
-                        if(rob[commit_ptr].branch_mismatch)
+                        if(branch_recovery && rob[commit_ptr].current_brat > branch_resolved_index)
                             begin
-                                flush <= 1'b1;
-                                missed_pc <= rvfi_rob_mirror[commit_ptr].pc_wdata;
-                                commit_ptr <= '0;
-                                issue_ptr <= '0;
-                                for(int i = 0; i < ROB_SIZE; i++) // reset the rob to all zeroes
-                                    begin
-                                        rob[i] <= '0;
-                                    end
-                                // queue pointers go to zero for reset
-                                issue_ptr <= '0;
-                                commit_ptr <= '0;
-                                //valid_commit <= '0;
-                                //flush <= 1'b0;
-                                //missed_pc <= '0;
+                                valid_commit <= 1'b0;
+                                flush <= 1'b0;
+                                missed_pc <= '0;
                             end
                         else
                             begin
-                                commit_ptr <= commit_ptr + 1'b1;
-                                flush <= 1'b0;
-                                missed_pc <= '0;
+                                rob[commit_ptr].done <= 1'b0;
+                                rob_line_to_commit <= rob[commit_ptr];
+                                valid_commit <= 1'b1;
+                                committer <= rvfi_rob_mirror[commit_ptr];
+                                if(rob[commit_ptr].branch_mismatch)
+                                    begin
+                                        flush <= 1'b1;
+                                        missed_pc <= rvfi_rob_mirror[commit_ptr].pc_wdata;
+                                        commit_ptr <= '0;
+                                        issue_ptr <= '0;
+                                        for(int i = 0; i < ROB_SIZE; i++) // reset the rob to all zeroes
+                                            begin
+                                                rob[i] <= '0;
+                                            end
+                                        // queue pointers go to zero for reset
+                                        issue_ptr <= '0;
+                                        commit_ptr <= '0;
+                                        //valid_commit <= '0;
+                                        //flush <= 1'b0;
+                                        //missed_pc <= '0;
+                                    end
+                                else
+                                    begin
+                                        commit_ptr <= commit_ptr + 1'b1;
+                                        flush <= 1'b0;
+                                        missed_pc <= '0;
+                                    end
                             end
                     end
                 else
@@ -136,6 +209,7 @@ always_ff @(posedge clk)
                         flush <= 1'b0;
                         missed_pc <= '0;
                     end
+                
             end
     end
 

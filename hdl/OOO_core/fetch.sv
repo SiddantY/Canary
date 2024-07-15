@@ -22,6 +22,8 @@ import rv32i_types::*;
     output  logic   [3:0]   imem_rmask,
     output  logic   [IQ_DATA_WIDTH-1:0]  instruction,
     output  logic   [31:0]  pc,
+    input   logic branch_recovery,
+    input   logic [31:0] brr_pc,
     output  logic           read_resp,
     input   logic           request_new_instr // NEEDS INCOROPATION 
 );
@@ -82,6 +84,8 @@ pc_reg pc_rec(
     .br_en(br_en),
     .flush(flush),
     .missed_pc(missed_pc),
+    .branch_recovery(branch_recovery), // from execute
+    .brr_pc(brr_pc), // from execute
     .pc(pc),
     .request_new_inst((~iq_full && imem_resp) || jalr_done),
     .pc_prev(pc_prev),
@@ -98,7 +102,7 @@ instruction_queue(
     .jump_en(jump_en),
     .jalr_en(jalr_en),
     .jalr_done(jalr_done),
-    .flush(flush),
+    .flush(flush | branch_recovery),
     .data_in({pc_tmp, iq_instruction_in}), // first 32 pc, bottom 32 instr -- NEWLY ADDED PC PREV
     .write_enable(iq_write_enable),
     .read_enable(request_new_instr && !iq_empty), // READ IF DE-Q REQUEST AND Q NOT EMPTY

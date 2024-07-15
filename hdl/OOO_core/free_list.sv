@@ -11,27 +11,50 @@ import rv32i_types::*;
     input logic     [4:0]       arch_rd,
     input   logic   [$clog2(NUM_REGS)-1:0]   rrf_arch_to_physical[32],
     output  logic   [$clog2(NUM_REGS)-1:0]   free_reg,
-    output  logic           reg_available
+    output  logic           reg_available,
+    input   logic           valid_branch,
+    input   logic [$clog2(NUM_BRATS)-1:0] current_brat,
+    input   logic           branch_recovery,
+    input   logic [$clog2(NUM_BRATS)-1:0] branch_resolved_index,
+    input  logic   [$clog2(NUM_REGS)-1:0]  brats[NUM_BRATS][32]
 );
 
-logic [NUM_REGS:0] free_list_bit_vector;
+logic [NUM_REGS-1:0] free_list_bit_vector;
 logic [$clog2(NUM_REGS)-1:0] free_list_ptr;
 
+logic [NUM_REGS-1:0] free_list_snap_shot[NUM_BRATS];
+
 assign free_reg = (arch_rd == 5'd0) ? 6'd0 : free_list_ptr;
+
+// always_latch
+//     begin
+//         if(rst)
+//             begin
+//                 for(int ac = 0; ac < NUM_BRATS; ac++)
+//                     begin
+//                         for(int ad = 0; ad < NUM_REGS; ad++)
+//                             begin
+//                                 free_list_snap_shot[ac][ad] = '0;
+//                             end
+//                     end
+//             end
+//         else
+//             begin
+//                 if(valid_branch) free_list_snap_shot[current_brat] = free_list_bit_vector;
+//                 if(valid_branch && reg_freed) free_list_snap_shot[current_brat][liberated_reg] = 1'b0;
+//             end
+//     end
 
 always_ff @(posedge clk)
     begin
         if(rst) // if reset everything is free
             begin
-                
                 free_list_bit_vector[31:0] <= 32'hFFFFFFFF;
 
-                for(int i = 32; i < NUM_REGS; i++)
+                for (int i = 32; i < NUM_REGS; i++) 
                     begin
                         free_list_bit_vector[i] <= 1'b0; // 0 is free, 1 is busy
                     end
-                
-                //free_list_ptr <= 6'd32;
             end
         else if(flush)
             begin
@@ -45,8 +68,42 @@ always_ff @(posedge clk)
                         free_list_bit_vector[rrf_arch_to_physical[c]] <= 1'b1;
                     end
             end
+        else if(branch_recovery)
+            begin
+
+                free_list_bit_vector <= free_list_snap_shot[branch_resolved_index];
+
+                if(reg_freed && liberated_reg != '0) // FREEING A REG
+                    begin
+                        free_list_bit_vector[liberated_reg] <= 1'b0; // NO LONGER BUSY
+                        for(int ac = 0; ac < NUM_BRATS; ac++)
+                            begin
+                                free_list_snap_shot[ac][liberated_reg] <= '0;
+                            end
+                    end
+                
+                
+                // for(int p1 = 0; p1 < NUM_REGS; p1++)
+                //     begin
+                //         free_list_bit_vector[p1] <= 1'b0;
+                //     end
+
+                for(int c = 0; c < 32; c++)
+                    begin
+                        free_list_bit_vector[brats[branch_resolved_index][c]] <= 1'b1;
+                    end
+                
+                for(int c = 0; c < 32; c++)
+                    begin
+                        free_list_bit_vector[rrf_arch_to_physical[c]] <= 1'b1;
+                    end
+                
+            end
         else
             begin
+                
+                if(valid_branch) free_list_snap_shot[current_brat] <= free_list_bit_vector;
+
                 if(need_free_reg && ~free_list_bit_vector[free_list_ptr]) // REQUESTING A FREE REG
                     begin
                         free_list_bit_vector[free_list_ptr] <= 1'b1; // SET BUSY
@@ -56,14 +113,28 @@ always_ff @(posedge clk)
                         // else free_list_ptr <= free_list_ptr + 1'b1;
 
                     end
+                
                 if(reg_freed && liberated_reg != '0) // FREEING A REG
                     begin
                         free_list_bit_vector[liberated_reg] <= 1'b0; // NO LONGER BUSY
+                        for(int ac = 0; ac < NUM_BRATS; ac++)
+                            begin
+                                free_list_snap_shot[ac][liberated_reg] <= '0;
+                            end
                     end
             end
     end
 
+logic [$clog2(NUM_REGS)-1:0] free_reg_counter;
 always_comb begin : FREE_REG_CHECK
+    free_reg_counter = '0;
+    for(int ae = 0; ae < NUM_REGS; ae++)
+        begin
+            if(free_list_bit_vector[ae] == 0)
+                begin
+                    free_reg_counter = free_reg_counter + 1;
+                end
+        end
 
     if ((free_list_bit_vector[2] == 1'b0) && phys_reg_valid[2] == 1'b1) begin 
         free_list_ptr = 6'd2;
@@ -190,7 +261,7 @@ always_comb begin : FREE_REG_CHECK
     end else if ((free_list_bit_vector[63] == 1'b0) && phys_reg_valid[63] == 1'b1) begin 
         free_list_ptr = 6'd63;
     end else begin
-            free_list_ptr = 'x;
+            free_list_ptr = 6'd62;
     end
 
 

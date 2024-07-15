@@ -1,14 +1,13 @@
-/*
-NEED TO ADD MORE PORTS TO RAT + ROB
-*/
 module decode
 import rv32i_types::*;
 #(
     parameter DEC_STATION_DEPTH = 16,
     parameter DEC_ROB_SIZE = 16,
     parameter NUM_REGS = 64,
-    parameter LDST_QUEUE_DEPTH = 16
+    parameter LDST_QUEUE_DEPTH = 16,
+    parameter NUM_BRATS = 16
 )
+
 (
     input logic clk,
     input logic rst,
@@ -43,6 +42,14 @@ import rv32i_types::*;
     //br stuff
     output logic flush,
     output logic [31:0] missed_pc,
+
+    //ebr stuff
+    input logic branch_recovery,
+    input logic [$clog2(NUM_BRATS)-1:0] branch_resolved_index,
+    input logic [$clog2(ROB_SIZE)-1:0] br_issue_ptr,
+    input logic correct_bp_early,
+
+    input logic [63:0] order_ind,
 
     //dmem signals for address unit
     output  logic   [31:0]  dmem_addr,
@@ -79,12 +86,9 @@ logic reg_available; // high when there are no free regs
 /*
 RAT VARS
 */
-// logic update_mapping; // drive high when a free reg is needed and a valid instructions comes through - !!! REPLACED BY READ RESP SIG
-//logic [2:0] alu_rs_valid_vector[32];
 logic res_station_full, res_station_full_mul;
-// logic rs1_valid_rat_output_alu, rs2_valid_rat_output_alu; // These used by reservations station to decide when valid instructions
-// logic [4:0] rs1_valid_index_alu, rs2_valid_index_alu; // used to index the rat to check for valid tings
 
+logic [$clog2(NUM_REGS)-1:0] arch_to_physical[32];
 
 /* 
 RESERVATION STATION -- ALU VARS 
@@ -93,7 +97,6 @@ reservation_station_entry_t reservation_station_alu[DEC_STATION_DEPTH]; // reser
 logic ready_alu[DEC_STATION_DEPTH]; // ready data
 logic [$clog2(DEC_STATION_DEPTH)-1:0] finished_idx, la, finished_idx_comb;
 logic remove_entry;
-
 
 /*
 RESERVATION STATION -- MUL VARS
@@ -108,9 +111,6 @@ logic rs1_valid_rat_output_ldst, rs2_valid_rat_output_ldst; // These used by res
 logic [4:0] rs1_valid_index_ldst, rs2_valid_index_ldst; // used to index the rat to check for valid tings
 
 reservation_station_entry_t lte;
-
-
-
 
 /*
 ROB VARS
@@ -146,6 +146,13 @@ data_bus_package_t execute_outputs;
 
 logic flush_comb;
 
+// BRAT VARS
+logic valid_branch; // if read resp + opcode == op_b_br
+logic [$clog2(NUM_BRATS)-1:0] current_brat; // goes to res stations + address unit
+logic [$clog2(NUM_REGS)-1:0] brats[NUM_BRATS][32]; // brats, these dump into rat upon misprediction detected
+logic brats_full; // if full gotta rely on rob to flush area saver preemptive thought, 16 brats too much ?
+logic   [NUM_REGS-1:0]          brat_free_lists[NUM_BRATS];
+
 always_ff @(posedge clk)
     begin
         if(rst || flush || flush_comb)
@@ -160,7 +167,7 @@ always_ff @(posedge clk)
 
 
 always_comb begin : INSTR_ACCEPT_LOGIC
-    if(reg_available && !res_station_full && !(rob_full || stall_preempt) && ~flush) begin // CHECK IF FREE LIST + RES STATION ARE RDY TO ACCEPT NEW INSTR
+    if(reg_available && !res_station_full && !(rob_full || stall_preempt) && ~flush && ~branch_recovery) begin // CHECK IF FREE LIST + RES STATION ARE RDY TO ACCEPT NEW INSTR
         request_new_instr = 1'b1;
     end else begin
         request_new_instr = 1'b0;
@@ -169,7 +176,7 @@ end
 
 always_comb 
     begin : UNCONDITIONAL_JUMPS
-        if(instruction[6:0] == op_b_jal && read_resp && ~flush)
+        if(instruction[6:0] == op_b_jal && read_resp && ~flush && ~branch_recovery)
             begin
                 jump_en = 1'b1;
                 jump_pc = instruction[63:32] + {{12{instruction[31]}}, instruction[19:12], instruction[20], instruction[30:21], 1'b0};
@@ -180,7 +187,7 @@ always_comb
                 jump_pc = '0;
             end
         
-        if(instruction[6:0] == op_b_jalr && read_resp && ~flush)
+        if(instruction[6:0] == op_b_jalr && read_resp && ~flush && ~branch_recovery)
             begin
                 jalr_en = 1'b1;
             end
@@ -190,6 +197,7 @@ always_comb
             end
     end
 
+assign valid_branch = read_resp & (instruction[6:0] == op_b_br);
 
 rename rename_dec(
     .instruction(instruction[31:0]),
@@ -213,7 +221,12 @@ free_list free_list_dec(
     .phys_reg_valid(phys_valid_vector),
     .rrf_arch_to_physical(rrf_arch_to_physical),
     .arch_rd(arch_rd),
-    .reg_available(reg_available)
+    .reg_available(reg_available),
+    .branch_recovery(branch_recovery),
+    .branch_resolved_index(branch_resolved_index),
+    .brats(brats),
+    .valid_branch(valid_branch),
+    .current_brat(current_brat)
 );
 
 rat rat_dec(
@@ -243,9 +256,43 @@ rat rat_dec(
     .physical_rs2(physical_rs2),
 
     //.valid_vec(alu_rs_valid_vector),
+    .brat_free_lists(brat_free_lists),
     .phys_valid_vector(phys_valid_vector),
     .flush(flush),
-    .rrf_arch_to_physical(rrf_arch_to_physical)
+    .rrf_arch_to_physical(rrf_arch_to_physical),
+
+    .branch_recovery(branch_recovery), // from execute
+    .branch_resolved_index(branch_resolved_index), // from execute
+    .arch_to_physical(arch_to_physical), // ISA regs to Physical Reg mappings, 9th bit for valid, rest 8 bits cuz 128 phys regs for now. 32 for 32 arch regs
+    .brats(brats)
+);
+
+brat
+#(
+    .NUM_REGS(NUM_REGS),
+    .NUM_BRATS(NUM_BRATS)
+)
+brat_dec_1
+(
+    .clk(clk),
+    .rst(rst),
+
+    .flush(flush),
+
+    .brats_full(brats_full),
+
+    .valid_branch(valid_branch),
+
+    .arch_to_physical(arch_to_physical),
+
+    .branch_recovery(branch_recovery),
+    .branch_resolved_index(branch_resolved_index),
+
+    .brat_free_lists(brat_free_lists),
+    .phys_valid_vector(phys_valid_vector),
+
+    .current_brat(current_brat),
+    .brats(brats)
 );
 
 reservation_station #(
@@ -274,7 +321,13 @@ reservation_station_alu_dec1
     .full(res_station_full),
     .update_valids(1'b1),
     .order(order),
-    .phys_valid_vector(phys_valid_vector)
+    .phys_valid_vector(phys_valid_vector),
+    
+    .current_brat(current_brat),
+    .brats_full(brats_full),
+
+    .branch_recovery(branch_recovery),
+    .branch_resolved_index(branch_resolved_index)
 );
 
 reservation_station #(
@@ -303,7 +356,13 @@ reservation_station_mul_dec1
     .full(res_station_full_mul),
     .update_valids(1'b1),
     .order(order),
-    .phys_valid_vector(phys_valid_vector)
+    .phys_valid_vector(phys_valid_vector),
+
+    .current_brat(current_brat),
+    .brats_full(brats_full),
+
+    .branch_recovery(branch_recovery),
+    .branch_resolved_index(branch_resolved_index)
 );
 
 logic [3:0] commit_ptr;
@@ -319,9 +378,16 @@ rob_dec_1
     .rst(rst),
     .instruction(instruction),
     .flush(flush),
+    .branch_recovery(branch_recovery), // from execute
+    .br_issue_ptr(br_issue_ptr),
+    .branch_resolved_index(branch_resolved_index),
+    .current_brat(current_brat),
     .missed_pc(missed_pc),
     .commit_ptr(commit_ptr),
     .flush_comb(flush_comb),
+    .order_ind(order_ind),
+
+    .order(order),
 
     .valid_intruction_index(execute_outputs.rob_index), // This comes from cbd/execture
     .valid_intruction_index_mul(execute_outputs_mul.rob_index),
@@ -330,7 +396,7 @@ rob_dec_1
     // input logic update_rob_valid, // This comes from cdb/execute
     .update_rob_valid(execute_outputs.execute_valid & execute_outputs.regf_we & ~flush), // TODO: FILL OUT FROM EXECUTE
     .update_rob_valid_mul(execute_outputs_mul.execute_valid & execute_outputs_mul.regf_we), // TODO: FILL OUT FROM EXECUTE
-    .update_rob_valid_ldst(execute_outputs_ldst.execute_valid& ~flush /*& execute_outputs_ldst.regf_we*/),
+    .update_rob_valid_ldst(execute_outputs_ldst.execute_valid & ~flush/*& execute_outputs_ldst.regf_we*/),
     .insert_into_rob(read_resp),
 
     .phys_rd(physical_rd),
@@ -395,6 +461,8 @@ address_unit address_unit_dec1(
 
     .rob_head(commit_ptr),
 
+    .valid_branch(valid_branch),
+
     .renamed_instruction(renamed_instruction), // decode
     .instruction(instruction),
     .valid_instruction(read_resp && (instruction[6:0] == op_b_load || instruction[6:0] == op_b_store)),
@@ -418,7 +486,15 @@ address_unit address_unit_dec1(
 
     // bookkeeping extras
     .order(order), // decode 
-    .ld_st_queue_data_out_latch(ld_st_queue_data_out_latch)
+    .ld_st_queue_data_out_latch(ld_st_queue_data_out_latch),
+
+    .current_brat(current_brat),
+    .brats_full(brats_full),
+
+    .correct_bp_early(correct_bp_early),
+
+    .branch_recovery(branch_recovery),
+    .branch_resolved_index(branch_resolved_index)
 );
 
 logic [2:0] index_to_execute;
@@ -451,16 +527,16 @@ always_ff @(posedge clk)
             begin
                 if(read_resp)
                     begin
-                        order <= order + 1'b1;
+                        order <= branch_recovery ? execute_outputs_comb.rvfi.order + 1'b1 : order + 1'b1;
                     end
                 
                 execute_valid_mul <= 1'b0;
 
                 if(~mul_busy && execute_valid_mul_c && execute_outputs_mul.execute_valid != 1'b1)
                     begin
-                        line_to_execute_mul <= line_to_execute_mul_comb;
-                        mul_busy <= 1'b1;
-                        execute_valid_mul <= 1'b1;
+                        line_to_execute_mul <= (branch_recovery && line_to_execute_mul.current_brat > branch_resolved_index) ? '0 : line_to_execute_mul_comb;
+                        mul_busy <= (branch_recovery && line_to_execute_mul.current_brat > branch_resolved_index) ? '0 : 1'b1;
+                        execute_valid_mul <= (branch_recovery && line_to_execute_mul.current_brat > branch_resolved_index) ? '0 : 1'b1;
                     end
                 else if(~mul_busy && ~execute_valid_mul_c)
                     begin
@@ -472,11 +548,11 @@ always_ff @(posedge clk)
                         mul_busy <= 1'b0;
                     end
                 
-                line_to_execute <= lte;
-                execute_valid_alu <= evalte;
+                line_to_execute <= (branch_recovery && lte.current_brat > branch_resolved_index) ? '0 : lte;
+                execute_valid_alu <= (branch_recovery && lte.current_brat > branch_resolved_index) ? '0 : evalte;
 
-                lte <= line_to_execute_comb;
-                evalte <= execute_valid_alu_comb;
+                lte <= (branch_recovery && line_to_execute_comb.current_brat > branch_resolved_index) ? '0 : line_to_execute_comb;
+                evalte <= (branch_recovery && line_to_execute_comb.current_brat > branch_resolved_index) ? '0 : execute_valid_alu_comb;
             end
     end
 
@@ -677,82 +753,82 @@ always_comb
         //     remove_entry = 1'b0;
         // end
 
-        if(ready_alu[15]) begin
+        if(ready_alu[15] && ~branch_recovery) begin
             line_to_execute_comb = reservation_station_alu[15];
             execute_valid_alu_comb = 1'b1;
             finished_idx = 4'd15;
             remove_entry = 1'b1;
-        end else if(ready_alu[14]) begin
+        end else if(ready_alu[14] && ~branch_recovery) begin
             line_to_execute_comb = reservation_station_alu[14];
             execute_valid_alu_comb = 1'b1;
             finished_idx = 4'd14;
             remove_entry = 1'b1;
-        end else if(ready_alu[13]) begin
+        end else if(ready_alu[13] && ~branch_recovery) begin
             line_to_execute_comb = reservation_station_alu[13];
             execute_valid_alu_comb = 1'b1;
             finished_idx = 4'd13;
             remove_entry = 1'b1;
-        end else if(ready_alu[12]) begin
+        end else if(ready_alu[12] && ~branch_recovery) begin
             line_to_execute_comb = reservation_station_alu[12];
             execute_valid_alu_comb = 1'b1;
             finished_idx = 4'd12;
             remove_entry = 1'b1;
-        end else if(ready_alu[11]) begin
+        end else if(ready_alu[11] && ~branch_recovery) begin
             line_to_execute_comb = reservation_station_alu[11];
             execute_valid_alu_comb = 1'b1;
             finished_idx = 4'd11;
             remove_entry = 1'b1;
-        end else if(ready_alu[10]) begin
+        end else if(ready_alu[10] && ~branch_recovery) begin
             line_to_execute_comb = reservation_station_alu[10];
             execute_valid_alu_comb = 1'b1;
             finished_idx = 4'd10;
             remove_entry = 1'b1;
-        end else if(ready_alu[9]) begin
+        end else if(ready_alu[9] && ~branch_recovery) begin
             line_to_execute_comb = reservation_station_alu[9];
             execute_valid_alu_comb = 1'b1;
             finished_idx = 4'd9;
             remove_entry = 1'b1;
-        end else if(ready_alu[8]) begin
+        end else if(ready_alu[8] && ~branch_recovery) begin
             line_to_execute_comb = reservation_station_alu[8];
             execute_valid_alu_comb = 1'b1;
             finished_idx = 4'd8;
             remove_entry = 1'b1;
-        end else if(ready_alu[7]) begin
+        end else if(ready_alu[7] && ~branch_recovery) begin
             line_to_execute_comb = reservation_station_alu[7];
             execute_valid_alu_comb = 1'b1;
             finished_idx = 4'd7;
             remove_entry = 1'b1;
-        end else if(ready_alu[6]) begin
+        end else if(ready_alu[6] && ~branch_recovery) begin
             line_to_execute_comb = reservation_station_alu[6];
             execute_valid_alu_comb = 1'b1;
             finished_idx = 4'd6;
             remove_entry = 1'b1;
-        end else if(ready_alu[5]) begin
+        end else if(ready_alu[5] && ~branch_recovery) begin
             line_to_execute_comb = reservation_station_alu[5];
             execute_valid_alu_comb = 1'b1;
             finished_idx = 4'd5;
             remove_entry = 1'b1;
-        end else if(ready_alu[4]) begin
+        end else if(ready_alu[4] && ~branch_recovery) begin
             line_to_execute_comb = reservation_station_alu[4];
             execute_valid_alu_comb = 1'b1;
             finished_idx = 4'd4;
             remove_entry = 1'b1;
-        end else if(ready_alu[3]) begin
+        end else if(ready_alu[3] && ~branch_recovery) begin
             line_to_execute_comb = reservation_station_alu[3];
             execute_valid_alu_comb = 1'b1;
             finished_idx = 4'd3;
             remove_entry = 1'b1;
-        end else if(ready_alu[2]) begin
+        end else if(ready_alu[2] && ~branch_recovery) begin
             line_to_execute_comb = reservation_station_alu[2];
             execute_valid_alu_comb = 1'b1;
             finished_idx = 4'd2;
             remove_entry = 1'b1;
-        end else if(ready_alu[1]) begin
+        end else if(ready_alu[1] && ~branch_recovery) begin
             line_to_execute_comb = reservation_station_alu[1];
             execute_valid_alu_comb = 1'b1;
             finished_idx = 4'd1;
             remove_entry = 1'b1;
-        end else if(ready_alu[0]) begin
+        end else if(ready_alu[0] && ~branch_recovery) begin
             line_to_execute_comb = reservation_station_alu[0];
             execute_valid_alu_comb = 1'b1;
             finished_idx = 4'd0;

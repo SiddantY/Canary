@@ -62,6 +62,16 @@ import rv32i_types::*;
     logic valid_commit;
     rvfi_commit_packet_t committer;
 
+    logic branch_recovery;
+    logic [$clog2(NUM_BRATS)-1:0] branch_resolved_index;
+    logic [31:0] brr_pc;
+
+    logic [$clog2(ROB_SIZE)-1:0] br_issue_ptr;
+
+    logic correct_bp_early;
+
+    logic [63:0] order_ind;
+
 
     assign branch_pred = 1'b0;
 
@@ -90,6 +100,8 @@ import rv32i_types::*;
         .imem_rmask(imem_rmask),
         .instruction(instr),
         .pc(pc),
+        .branch_recovery(branch_recovery), // from execute
+        .brr_pc(brr_pc), // from execute
         .read_resp(read_resp),
         .request_new_instr(request_new_instr)
     );
@@ -118,6 +130,11 @@ import rv32i_types::*;
         .read_resp(read_resp),
         .valid_commit(valid_commit),
         .committer(committer),
+        .branch_recovery(branch_recovery), // from execute
+        .branch_resolved_index(branch_resolved_index), // from execute
+        .br_issue_ptr(br_issue_ptr),
+        .correct_bp_early(correct_bp_early),
+        .order_ind(order_ind),
         .dmem_addr(dmem_addr), // dmem stuff cuz yk load and stores
         .dmem_rmask(dmem_rmask),
         .dmem_wmask(dmem_wmask),
@@ -134,6 +151,12 @@ import rv32i_types::*;
         .jalr_pc(jalr_pc),
         //.jump_en(jump_en_latch),
         //.pc_jump(jump_pc_latch),
+        .branch_recovery(branch_recovery), // from execute
+        .branch_resolved_index(branch_resolved_index), // from execute
+        .brr_pc(brr_pc),
+        .br_issue_ptr(br_issue_ptr),
+        .order_ind(order_ind),
+        .correct_bp_early(correct_bp_early),
         .execute_valid_alu(execute_valid_alu),
         .execute_outputs(execute_outputs)
     );
@@ -187,6 +210,23 @@ import rv32i_types::*;
 //                 end
 //     end
 
+logic [63:0] new_o;
+
+always_ff @(posedge clk)
+    begin
+        if(rst)
+            begin
+                new_o <= '0;
+            end
+        else
+            begin
+                if(valid_commit)
+                    begin
+                        new_o <= new_o + 1'b1;
+                    end
+            end
+    end
+
 always_comb
     begin
         if(rst)
@@ -211,7 +251,7 @@ always_comb
         else
             begin
                 monitor_valid = valid_commit == 1'b0 ? 1'b0 : 1'b1;
-                monitor_order = committer.order;
+                monitor_order = new_o;
                 monitor_inst = committer.inst;
                 monitor_rs1_addr = committer.rs1_addr;
                 monitor_rs2_addr = committer.rs2_addr;

@@ -10,6 +10,8 @@ import rv32i_types::*;
     input   logic   [31:0]  jalr_pc,
     input   logic           flush,
     input   logic   [31:0]  missed_pc,
+    input   logic branch_recovery,
+    input   logic [31:0] brr_pc,
     output  logic   [31:0]  pc, pc_prev, pc_tmp
 );
 
@@ -33,7 +35,7 @@ always_ff @(posedge clk)
                     end
                 else
                     begin
-                        pc_tmp <= flush ? pc_next : pc_tmp;
+                        pc_tmp <= (flush | branch_recovery) ? pc_next : pc_tmp;
                         pc_prev <= pc_prev;  
                     end
             end
@@ -41,7 +43,7 @@ always_ff @(posedge clk)
 
 always_comb begin : pc_magic
     if (request_new_inst) pc = pc_next;
-    else if(flush) pc = pc_next;
+    else if(flush | branch_recovery) pc = pc_next;
     else pc = pc_tmp;
 end
 
@@ -54,6 +56,10 @@ always_comb
         else if(flush)
             begin
                 pc_next = missed_pc;
+            end
+        else if(branch_recovery)
+            begin
+                pc_next = brr_pc;
             end
         else if(jump_en)
             begin

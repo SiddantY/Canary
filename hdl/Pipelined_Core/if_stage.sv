@@ -7,6 +7,10 @@ import rv32i_types::*;
     output  logic   [31:0]  imem_addr,
     output  logic   [3:0]   imem_rmask,
     input   logic           imem_resp,
+    input   logic   [31:0]  imem_raddr,
+    input   logic   [31:0]  imem_rdata,
+
+    input   logic           imem_stall,
 
     input   logic           mispredict_br_en,
     input   logic   [31:0]  mispredict_pc,
@@ -27,7 +31,7 @@ always_comb
         imem_rmask = 4'b1111;
         imem_addr = (dstall) ? pc_prev : pc;
 
-        if(imem_resp)
+        if((imem_resp && imem_raddr == pc) | mispredict_br_en)
             begin
                 istall = 1'b0;
             end
@@ -36,14 +40,15 @@ always_comb
                 istall = 1'b1;
             end
         
-        if_id_reg_next.pc = pc;
+        if_id_reg_next.pc = mispredict_br_en ? mispredict_pc : pc + 3'b100;
         if_id_reg_next.branch_pred = 1'b0; // static not taken for now
         if_id_reg_next.predicted_pc = pc + 3'b100; // static not taken for now
 
         if_id_reg_next.rvfi.monitor_valid = 1'b1;
         if_id_reg_next.rvfi.monitor_order = order;
-        if_id_reg_next.rvfi.monitor_pc_rdata = pc;
-        if_id_reg_next.rvfi.monitor_pc_wdata = pc + 3'b100; // will change in execute if jal/jalr/branch
+        if_id_reg_next.rvfi.monitor_inst = imem_rdata;
+        if_id_reg_next.rvfi.monitor_pc_rdata = mispredict_br_en ? mispredict_pc : pc + 3'b100;
+        if_id_reg_next.rvfi.monitor_pc_wdata = mispredict_br_en ? mispredict_pc + 3'b100 : pc + 4'b1000; // will change in execute if jal/jalr/branch
     end
 
 pipeline_pc_reg pc_reg_dec_1(

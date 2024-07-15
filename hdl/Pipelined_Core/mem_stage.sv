@@ -14,52 +14,80 @@ import rv32i_types::*;
     output  logic   [31:0]      dmem_addr,
     output  logic   [31:0]      dmem_wdata,
 
+    input   logic               istall,
+
     output  logic               dstall,
     output  mem_wb_reg_t        mem_wb_reg_next
 );
 
-logic p2o; // (prevent_twice_occurance) this is used so that magic mem doesn't respond twice 1 address due to keeping the address up
+logic p2; // (prevent_twice_occurance) this is used so that magic mem doesn't respond twice 1 address due to keeping the address up
 always_ff @(posedge clk)
     begin : d_no_rep
 
         if(rst)
             begin
-                p2o <= 1'b0;
+                p2 <= 1'b0;
             end
         else
             begin
 
                 if((ex_mem_reg.mem_read | ex_mem_reg.mem_write) && ex_mem_reg.rvfi.monitor_valid) // load instruction stall til response
                     begin
-                        p2o <= 1'b1;
+                        p2 <= 1'b1;
                     end
                 
                 if(dmem_resp) // response set stall to low
                     begin
-                        p2o <= 1'b0;
+                        p2 <= 1'b0;
                     end
                 
             end
     end : d_no_rep
 
-always_latch
+logic p2o;
+assign p2o = p2 & istall;
+
+// always_latch
+//     begin : dstall_logic
+
+//         if(rst)
+//             begin
+//                 dstall = 1'b0;
+//             end
+//         else
+//             begin
+
+//                 if((ex_mem_reg.mem_read | ex_mem_reg.mem_write) && ex_mem_reg.rvfi.monitor_valid) // load instruction stall til response
+//                     begin
+//                         dstall = 1'b1;
+//                     end
+                
+//                 if(dmem_resp) // response set stall to low
+//                     begin
+//                         dstall = 1'b0;
+//                     end
+                
+//             end
+//     end : dstall_logic
+
+always_ff @(posedge clk)
     begin : dstall_logic
 
         if(rst)
             begin
-                dstall = 1'b0;
+                dstall <= 1'b0;
             end
         else
             begin
 
                 if((ex_mem_reg.mem_read | ex_mem_reg.mem_write) && ex_mem_reg.rvfi.monitor_valid) // load instruction stall til response
                     begin
-                        dstall = 1'b1;
+                        dstall <= 1'b1;
                     end
                 
                 if(dmem_resp) // response set stall to low
                     begin
-                        dstall = 1'b0;
+                        dstall <= 1'b0;
                     end
                 
             end

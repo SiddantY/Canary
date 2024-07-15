@@ -17,8 +17,8 @@ always_ff @(posedge clk)
     begin
         if(rst) // pc defaults to 0x6000_0000 on reset
             begin
-                pc <= 32'h6000_0000;
-                pc_prev <= 32'h6000_0000;
+                pc <= 32'h5FFF_FFFC;//32'h6000_0000;
+                pc_prev <= 32'h5FFF_FFFC;
             end
         else // pc <- pc_next 
             begin
@@ -29,7 +29,7 @@ always_ff @(posedge clk)
                     end
                 else
                     begin
-                        pc <= pc;
+                        pc <= /*mispredict_br_en ? pc_next :*/ pc;
                         pc_prev <= pc_prev;  
 
                     end

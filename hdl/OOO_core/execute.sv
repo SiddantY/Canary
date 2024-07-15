@@ -8,7 +8,15 @@ import rv32i_types::*;
     //input logic jump_en,
     output logic jalr_done,
     output logic [31:0] jalr_pc,
-    output data_bus_package_t execute_outputs
+    output data_bus_package_t execute_outputs,
+    output logic branch_recovery,
+    output logic [$clog2(NUM_BRATS)-1:0] branch_resolved_index,
+    output logic [31:0] brr_pc,
+    output logic [$clog2(ROB_SIZE)-1:0] br_issue_ptr,
+
+    output logic [63:0] order_ind,
+
+    output logic correct_bp_early
 );
 
 logic [31:0] a, b; // alu inputs
@@ -147,6 +155,7 @@ always_comb
             end
         endcase
 
+        execute_outputs.current_brat = line_to_execute.current_brat;
         //Setting up the package to go back to the decode stuff now
         execute_outputs.phys_rd = line_to_execute.phys_rd; // rd matching
         execute_outputs.phys_rd_val = f; // alu out to f. FUCK LOADS AND STORES :(
@@ -156,7 +165,7 @@ always_comb
         execute_outputs.alu_or_cmp_op = (line_to_execute.opcode == op_b_store || line_to_execute.opcode == op_b_load) ? 1'b0 : 1'b1;
         execute_outputs.execute_valid = execute_valid_alu;
         execute_outputs.arch_rd = line_to_execute.arch_rd;
-        execute_outputs.branch_mismatch = (line_to_execute.opcode == op_b_br && line_to_execute.branch_pred != f[0]) ? 1'b1 : 1'b0;
+        execute_outputs.branch_mismatch = (line_to_execute.opcode == op_b_br && line_to_execute.branch_pred != f[0] && line_to_execute.brats_full) ? 1'b1 : 1'b0;
         // rvfi
         execute_outputs.rvfi.valid = 1'b0;
         execute_outputs.rvfi.order = line_to_execute.order;
@@ -171,11 +180,16 @@ always_comb
         
         jalr_pc = '0;
         jalr_done = '0;
+        branch_recovery = '0;
+        brr_pc = '0;
+        branch_resolved_index = '0;
+        br_issue_ptr = '0;
+        correct_bp_early = 1'b0;
         if(line_to_execute.inst[6:0] == op_b_jalr)
             begin
                 execute_outputs.rvfi.pc_wdata = (jalr_sum & 32'hFFFFFFFE);
                 jalr_pc = (jalr_sum & 32'hFFFFFFFE);
-                jalr_done = 1'b1;
+                jalr_done = 1'b1 & execute_valid_alu;
             end
         else if(line_to_execute.inst[6:0] == op_b_jal)
             begin
@@ -184,6 +198,16 @@ always_comb
         else if(line_to_execute.inst[6:0] == op_b_br && f[0])
             begin
                 execute_outputs.rvfi.pc_wdata = br_sum;
+                branch_recovery = line_to_execute.brats_full ? 1'b0 : 1'b1;
+                branch_resolved_index = line_to_execute.current_brat;
+                brr_pc = br_sum;
+                br_issue_ptr = line_to_execute.rob_index;
+            end
+        else if(line_to_execute.inst[6:0] == op_b_br && ~f[0])
+            begin
+                execute_outputs.rvfi.pc_wdata = line_to_execute.pc + 32'h4;
+                branch_resolved_index = line_to_execute.current_brat;
+                correct_bp_early = 1'b1;
             end
         else
             begin
@@ -194,6 +218,8 @@ always_comb
         execute_outputs.rvfi.mem_wmask = '0;
         execute_outputs.rvfi.mem_rdata = '0;
         execute_outputs.rvfi.mem_wdata = '0;
+
+        order_ind = execute_outputs.rvfi.order;
 
     end
 

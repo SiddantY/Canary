@@ -1,5 +1,8 @@
 module rat
 import rv32i_types::*;
+#(
+    parameter NUM_BRATS = 16
+)
 (
     input   logic           clk,
     input   logic           rst,
@@ -22,10 +25,15 @@ import rv32i_types::*;
     output  logic   [$clog2(NUM_REGS)-1:0]   physical_rs1,
     output  logic   [$clog2(NUM_REGS)-1:0]   physical_rs2,
     //output  logic  [2:0]   valid_vec[32],
-    output  logic [NUM_REGS-1:0] phys_valid_vector
+    input  logic   [NUM_REGS-1:0]          brat_free_lists[NUM_BRATS],
+    output  logic [NUM_REGS-1:0] phys_valid_vector,
+    
+    input   logic branch_recovery,
+    input   logic [$clog2(NUM_BRATS)-1:0] branch_resolved_index,
+    output  logic [$clog2(NUM_REGS)-1:0] arch_to_physical[32], // ISA regs to Physical Reg mappings, 9th bit for valid, rest 8 bits cuz 128 phys regs for now. 32 for 32 arch regs
+    input  logic   [$clog2(NUM_REGS)-1:0]  brats[NUM_BRATS][32]
 );
 
-logic [$clog2(NUM_REGS)-1:0] arch_to_physical[32]; // ISA regs to Physical Reg mappings, 9th bit for valid, rest 8 bits cuz 128 phys regs for now. 32 for 32 arch regs
 // logic [127:0] phys_valid_vector;
 
 always_ff @(posedge clk)
@@ -78,9 +86,9 @@ always_ff @(posedge clk)
                     begin
                         //arch_to_physical[] <= rrf_arch_to_physical;
                         for (int i1 = 0; i1 < 32; i1++) 
-                        begin
-                            arch_to_physical[i1][$clog2(NUM_REGS)-1:0] <= rrf_arch_to_physical[i1];
-                        end
+                            begin
+                                arch_to_physical[i1][$clog2(NUM_REGS)-1:0] <= rrf_arch_to_physical[i1];
+                            end
 
                         for(int p1 = 0; p1 < NUM_REGS; p1++)
                             begin
@@ -91,6 +99,22 @@ always_ff @(posedge clk)
                         //     begin
                         //         phys_valid_vector[rrf_arch_to_physical[c]] <= 1'b0;
                         //     end
+                    end
+                else if(branch_recovery)
+                    begin
+                        
+                        for (int i1 = 0; i1 < 32; i1++) 
+                            begin
+                                arch_to_physical[i1][$clog2(NUM_REGS)-1:0] <= brats[branch_resolved_index][i1];
+                            end
+                        
+                        for(int p1 = 0; p1 < NUM_REGS; p1++)
+                            begin
+                                phys_valid_vector[p1] <= 1'b1;
+                            end
+
+                        // phys_valid_vector <= brat_free_lists[branch_resolved_index];
+
                     end
                 else
                     begin
@@ -130,13 +154,5 @@ always_comb
 
 
     end
-
-// always_comb 
-//     begin : VALID_EXPORT
-//         for(int j = 0; j < 32; j++) 
-//             begin
-//                 valid_vec[j] = arch_to_physical[j][9:7];
-//             end
-//     end
 
 endmodule

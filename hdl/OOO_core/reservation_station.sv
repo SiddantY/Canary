@@ -2,7 +2,8 @@ module reservation_station
 import rv32i_types::*;
 #(
     parameter STATION_DEPTH = 16,
-    parameter ROB_SIZE = 16
+    parameter ROB_SIZE = 16,
+    parameter NUM_BRATS = 16
 )
 (
     input logic clk,
@@ -25,7 +26,13 @@ import rv32i_types::*;
     input logic update_valids,
     input logic [63:0] order,
     input logic [NUM_REGS-1:0] phys_valid_vector,
-    output logic full
+    output logic full,
+
+    input logic [$clog2(NUM_BRATS)-1:0] current_brat,
+    input logic brats_full,
+
+    input logic branch_recovery,
+    input logic [$clog2(NUM_BRATS)-1:0] branch_resolved_index
 );
 
 // reservation_station_entry_t reservation_station[STATION_DEPTH]; // stores reservation station entries
@@ -72,6 +79,8 @@ always_ff @(posedge clk)
                         reservation_station[next_free_reservation_station_entry].order <= order;
                         reservation_station[next_free_reservation_station_entry].inst <= inst;
                         reservation_station[next_free_reservation_station_entry].branch_pred <= branch_pred;
+                        reservation_station[next_free_reservation_station_entry].current_brat <= current_brat;
+                        reservation_station[next_free_reservation_station_entry].brats_full <= brats_full;
 
 
                         // @TODONE need to add a bunch of conditionals based on opcode
@@ -220,6 +229,17 @@ always_ff @(posedge clk)
                                     reservation_station[next_free_reservation_station_entry].imm <= '0;
                                 end
                         endcase
+                    end
+                
+                if(branch_recovery)
+                    begin
+                        for(int aa = 0; aa < STATION_DEPTH; aa++)
+                            begin
+                                if(reservation_station[aa].current_brat > branch_resolved_index)
+                                    begin
+                                        reservation_station[aa].busy <= 1'b0;
+                                    end
+                            end
                     end
             end
     end

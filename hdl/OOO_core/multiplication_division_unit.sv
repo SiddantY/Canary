@@ -91,6 +91,7 @@ always_comb
             end
         endcase
 
+        execute_outputs_mul.current_brat = line_to_execute_mul.current_brat;
 
         execute_outputs_mul.phys_rd = line_to_execute_mul.phys_rd; // rd matching
         if(line_to_execute_mul.funct3 == 3'b000)

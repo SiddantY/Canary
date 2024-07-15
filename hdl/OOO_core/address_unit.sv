@@ -9,6 +9,8 @@ import rv32i_types::*;
     input logic valid_instruction,
     input logic [$clog2(ROB_SIZE)-1:0] rob_index,
 
+    input logic valid_branch,
+
     output logic [$clog2(NUM_REGS)-1:0] pr1_s_ldst,
     input logic [31:0] pr1_val_ldst,
 
@@ -31,7 +33,14 @@ import rv32i_types::*;
     output ld_st_queue_t ld_st_queue_data_out_latch,
     
     //flush
-    input logic flush
+    input logic flush,
+
+    input logic [$clog2(NUM_BRATS)-1:0] current_brat,
+    input logic brats_full,
+
+    input logic branch_recovery,
+    input logic [$clog2(NUM_BRATS)-1:0] branch_resolved_index,
+    input logic correct_bp_early
 );
 
 ld_st_queue_t ld_st_queue_data_in;
@@ -58,7 +67,7 @@ logic dmem_cout;
 
 always_ff @(posedge clk)
     begin
-        if(rst || flush)
+        if(rst || flush || (branch_recovery && ld_st_queue_data_out_latch.current_brat > branch_resolved_index))
             begin
                 mem_ready <= 1'b1;
                 ld_st_queue_data_out_latch <= '0;
@@ -112,6 +121,8 @@ always_comb
         ld_st_queue_data_in.imm = instruction[6:0] == op_b_load ? {{21{instruction[31]}}, instruction[30:20]} : {{21{instruction[31]}}, instruction[30:25], instruction[11:7]};
         ld_st_queue_data_in.order = order;
         ld_st_queue_data_in.inst = instruction[31:0];
+        ld_st_queue_data_in.brats_full = brats_full;
+        ld_st_queue_data_in.current_brat = current_brat;
 
         dmem_addr = '0;
         dmem_rmask = '0;
@@ -165,7 +176,8 @@ always_comb
                 dmem_wdata = '0;
             end
         
-        
+        execute_outputs_ldst.current_brat = ld_st_queue_data_out_latch.current_brat;
+
         execute_outputs_ldst.phys_rd = ld_st_queue_data_out_latch.phys_rd; // rd matching
         if(ld_st_queue_data_out_latch.opcode == op_b_load)
             begin
@@ -189,7 +201,7 @@ always_comb
 
         // if a load and store not a valid thing to update the rat, prf, rob. 0 is ld/st, 1 is alu/cmp
         execute_outputs_ldst.alu_or_cmp_op = 1'b0;
-        execute_outputs_ldst.execute_valid = dmem_resp;
+        execute_outputs_ldst.execute_valid = (branch_recovery && ld_st_queue_data_out_latch.current_brat > branch_resolved_index) ? 1'b0 : dmem_resp;
         execute_outputs_ldst.arch_rd = ld_st_queue_data_out_latch.arch_rd;
         
         // rvfi
@@ -232,7 +244,14 @@ load_store_queue_dec_1
     .pr1_s_ld_st(pr1_s_ldst),
     .pr2_s_ld_st(pr2_s_ldst),
     .data_out(ld_st_queue_data_out),
-    .read_resp(ld_st_q_read_resp)
+    .read_resp(ld_st_q_read_resp),
+    .valid_branch(valid_branch),
+    .current_brat(current_brat),
+    .brats_full(brats_full),
+    .correct_bp_early(correct_bp_early),
+
+    .branch_recovery(branch_recovery),
+    .branch_resolved_index(branch_resolved_index)
 );
 
 carry_look_ahead_adder jalr_addr(
