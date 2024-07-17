@@ -19,6 +19,7 @@ import rv32i_types::*;
     input   logic           write_back_mem,
 
     output  logic           br_en,
+    output  logic           ex_done,
     output  logic   [31:0]  mispredict_pc
 );
 

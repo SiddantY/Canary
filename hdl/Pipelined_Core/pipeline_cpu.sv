@@ -69,7 +69,7 @@ logic br_en;
 logic [31:0] mispredict_pc;
 
 // prevent double commits
-logic commit;
+logic committed;
 
 // rvfi signals
 logic monitor_valid;
@@ -89,13 +89,20 @@ logic [3:0] monitor_mem_wmask;
 logic [31:0] monitor_mem_rdata;
 logic [31:0] monitor_mem_wdata;
 
-// always_ff @(posedge clk) begin : commit_ctrl
-//     if(rst) commit <= '0;
-//     else begin
-//         if(mem_wb_reg.rvfi.monitor_valid && ~dstall) commit <= '1;
+logic [31:0] last_pc;
+always_ff @(posedge clk) begin : commit_ctrl
+    if(rst) begin 
+        committed <= '0;
+        last_pc <= '0;
+    end
+    else begin
+        if(mem_wb_reg.rvfi.monitor_valid && ~dstall) begin 
+            committed <= '1;
+            last_pc <= mem_wb_reg.rvfi.monitor_pc_rdata;
+        end
+    end
+end : commit_ctrl
 
-//     end
-// end : commit_ctrl
 always_ff @(posedge clk) // reworks according to monitor_valid @TODO
     begin : order_control_block
         
@@ -105,7 +112,7 @@ always_ff @(posedge clk) // reworks according to monitor_valid @TODO
             end
         else
             begin
-                if(mem_wb_reg.rvfi.monitor_valid && ~dstall && IQ_pop)
+                if(monitor_valid)
                     begin
                         order <= order + 1'b1;
                     end
@@ -125,19 +132,33 @@ always_ff @(posedge clk)
             end
         else
             begin
-                if(~IQ_pop | dstall ) // stall decode and execute if there is a stall in back end, mem and wb continue
+                if(~IQ_pop | dstall) // or dstall
                     begin
                         if_id_reg <= br_en ? '0 : if_id_reg;
-                        id_ex_reg <= /*br_en ? '0 :*/ id_ex_reg;
-                        ex_mem_reg <= /*br_en & ~dstall ? ex_mem_reg_next :*/ ex_mem_reg;
-                        // mem_wb_reg <= /*br_en & ~dstall ? mem_wb_reg_next :*/ mem_wb_reg_next;
+                        id_ex_reg <= id_ex_reg;
+                        ex_mem_reg <= ex_mem_reg;
+                        mem_wb_reg <= mem_wb_reg;
                     end
                 else
                     begin
                         if_id_reg <= br_en ? '0 : if_id_reg_next;
                         id_ex_reg <= br_en ? '0 : id_ex_reg_next;
                         ex_mem_reg <= ex_mem_reg_next;
+                        mem_wb_reg <= mem_wb_reg_next;
                     end
+                // if(~IQ_pop | dstall ) // stall decode and execute if there is a stall in back end, mem and wb continue
+                //     begin
+                //         if_id_reg <= br_en ? '0 : if_id_reg;
+                //         id_ex_reg <= /*br_en ? '0 :*/ id_ex_reg;
+                //         ex_mem_reg <= /*br_en & ~dstall ? ex_mem_reg_next :*/ ex_mem_reg;
+                //         // mem_wb_reg <= /*br_en & ~dstall ? mem_wb_reg_next :*/ mem_wb_reg_next;
+                //     end
+                // else
+                //     begin
+                //         if_id_reg <= br_en ? '0 : if_id_reg_next;
+                //         id_ex_reg <= br_en ? '0 : id_ex_reg_next;
+                //         ex_mem_reg <= ex_mem_reg_next;
+                //     end
                 // if(!IQ_pop | dstall) begin
                 //     mem_wb_reg <= mem_wb_reg;
                 // end
@@ -149,7 +170,7 @@ always_ff @(posedge clk)
                 // if_id_reg <= if_id_reg_next;
                 // id_ex_reg <= id_ex_reg_next;
                 // ex_mem_reg <= ex_mem_reg_next;
-                mem_wb_reg <= mem_wb_reg_next;
+                // mem_wb_reg <= mem_wb_reg_next;
             end
     end : pipeline_register_control
 
@@ -308,7 +329,7 @@ always_comb
             end
         else
             begin
-                monitor_valid = mem_wb_reg.rvfi.monitor_valid && ~dstall;
+                monitor_valid = mem_wb_reg.rvfi.monitor_valid && ~dstall && (last_pc != mem_wb_reg.rvfi.monitor_pc_rdata);
                 monitor_order = order;
                 monitor_inst = mem_wb_reg.rvfi.monitor_inst;
                 monitor_rs1_addr = mem_wb_reg.rvfi.monitor_rs1_addr;
