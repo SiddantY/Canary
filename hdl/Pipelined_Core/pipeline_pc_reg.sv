@@ -8,7 +8,8 @@ module pipeline_pc_reg(
     input   logic           mispredict_br_en,
     input   logic   [31:0]  mispredict_pc,
 
-    input   logic           stall
+    // input   logic           stall
+    input   logic   IQ_push
 );
 
 logic [31:0] pc_next;
@@ -22,7 +23,7 @@ always_ff @(posedge clk)
             end
         else // pc <- pc_next 
             begin
-                if(~stall || mispredict_br_en)
+                if(IQ_push || mispredict_br_en) //used to be ~stall instead of IQ_push
                     begin
                         pc <= pc_next;
                         pc_prev <= pc;

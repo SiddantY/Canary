@@ -82,6 +82,7 @@ always_comb
 
 
         // popping from IQ
+        if_id_reg_next = '0;
         if_id_reg_next.rvfi.monitor_valid = 1'b0;
 
         if(!IQ_empty && !dstall) 
@@ -113,7 +114,7 @@ pipeline_pc_reg pc_reg_dec_1(
     .mispredict_br_en(mispredict_br_en),
     .mispredict_pc(mispredict_pc),
 
-    .stall(istall)
+    .IQ_push(IQ_push)
 );
 
 instr_queue IQ (      

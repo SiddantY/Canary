@@ -330,21 +330,40 @@ always_comb
         else
             begin
                 monitor_valid = mem_wb_reg.rvfi.monitor_valid && ~dstall && (last_pc != mem_wb_reg.rvfi.monitor_pc_rdata);
-                monitor_order = order;
-                monitor_inst = mem_wb_reg.rvfi.monitor_inst;
-                monitor_rs1_addr = mem_wb_reg.rvfi.monitor_rs1_addr;
-                monitor_rs2_addr = mem_wb_reg.rvfi.monitor_rs2_addr;
-                monitor_rs1_rdata = mem_wb_reg.rvfi.monitor_rs1_rdata;
-                monitor_rs2_rdata = mem_wb_reg.rvfi.monitor_rs2_rdata;
-                monitor_rd_addr = mem_wb_reg.rvfi.monitor_rd_addr;
-                monitor_rd_wdata = mem_wb_reg.rvfi.monitor_rd_wdata;
-                monitor_pc_rdata = mem_wb_reg.rvfi.monitor_pc_rdata;
-                monitor_pc_wdata = mem_wb_reg.rvfi.monitor_pc_wdata;
-                monitor_mem_addr = mem_wb_reg.rvfi.monitor_mem_addr;
-                monitor_mem_rmask = mem_wb_reg.rvfi.monitor_mem_rmask;
-                monitor_mem_wmask = mem_wb_reg.rvfi.monitor_mem_wmask;
-                monitor_mem_rdata = mem_wb_reg.rvfi.monitor_mem_rdata;
-                monitor_mem_wdata = mem_wb_reg.rvfi.monitor_mem_wdata;
+                if(monitor_valid) begin
+                    monitor_order = order;
+                    monitor_inst = mem_wb_reg.rvfi.monitor_inst;
+                    monitor_rs1_addr = mem_wb_reg.rvfi.monitor_rs1_addr;
+                    monitor_rs2_addr = mem_wb_reg.rvfi.monitor_rs2_addr;
+                    monitor_rs1_rdata = mem_wb_reg.rvfi.monitor_rs1_rdata;
+                    monitor_rs2_rdata = mem_wb_reg.rvfi.monitor_rs2_rdata;
+                    monitor_rd_addr = mem_wb_reg.rvfi.monitor_rd_addr;
+                    monitor_rd_wdata = mem_wb_reg.rvfi.monitor_rd_wdata;
+                    monitor_pc_rdata = mem_wb_reg.rvfi.monitor_pc_rdata;
+                    monitor_pc_wdata = mem_wb_reg.rvfi.monitor_pc_wdata;
+                    monitor_mem_addr = mem_wb_reg.rvfi.monitor_mem_addr;
+                    monitor_mem_rmask = mem_wb_reg.rvfi.monitor_mem_rmask;
+                    monitor_mem_wmask = mem_wb_reg.rvfi.monitor_mem_wmask;
+                    monitor_mem_rdata = mem_wb_reg.rvfi.monitor_mem_rdata;
+                    monitor_mem_wdata = mem_wb_reg.rvfi.monitor_mem_wdata;
+                end else begin
+                    monitor_valid = '0;
+                    monitor_order = '0;
+                    monitor_inst = '0;
+                    monitor_rs1_addr = '0;
+                    monitor_rs2_addr = '0;
+                    monitor_rs1_rdata = '0;
+                    monitor_rs2_rdata = '0;
+                    monitor_rd_addr = '0;
+                    monitor_rd_wdata = '0;
+                    monitor_pc_rdata = '0;
+                    monitor_pc_wdata = '0;
+                    monitor_mem_addr = '0;
+                    monitor_mem_rmask = '0;
+                    monitor_mem_wmask = '0;
+                    monitor_mem_rdata = '0;
+                    monitor_mem_wdata = '0;
+                end
             end
 
     end : rvfi_signals
