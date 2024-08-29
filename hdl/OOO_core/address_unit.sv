@@ -238,7 +238,7 @@ load_store_queue_dec_1
     .rob_head(rob_head),
     .data_in(ld_st_queue_data_in),
     .write_enable(valid_instruction && ~flush),
-    .read_enable(mem_ready && ~flush),
+    .read_enable(mem_ready_ac && ~flush),
     .phys_valid_vector(phys_valid_vector),
     .queue_empty(ld_st_q_empty),
     .queue_full(ld_st_q_full),

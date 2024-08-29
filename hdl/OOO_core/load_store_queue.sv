@@ -52,6 +52,8 @@ always_ff @(posedge clk)
                         data_queue[i%QUEUE_DEPTH].imm <= '0;
                         data_queue[i%QUEUE_DEPTH].order <= '0;
                         data_queue[i%QUEUE_DEPTH].inst <= '0;
+
+                        data_out <= '0;
                     end
 
                 //set pointers to 0
