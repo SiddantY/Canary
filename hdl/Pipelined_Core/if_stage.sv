@@ -7,6 +7,7 @@ import rv32i_types::*;
     output  logic   [31:0]  imem_addr,
     output  logic   [3:0]   imem_rmask,
     input   logic           imem_resp,
+    input   logic   [31:0]  imem_rdata,
 
     input   logic           mispredict_br_en,
     input   logic   [31:0]  mispredict_pc,
@@ -42,6 +43,7 @@ always_comb
 
         if_id_reg_next.rvfi.monitor_valid = 1'b1;
         if_id_reg_next.rvfi.monitor_order = order;
+        if_id_reg_next.rvfi.monitor_inst  = imem_rdata;
         if_id_reg_next.rvfi.monitor_pc_rdata = pc;
         if_id_reg_next.rvfi.monitor_pc_wdata = pc + 3'b100; // will change in execute if jal/jalr/branch
     end
