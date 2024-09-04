@@ -54,7 +54,7 @@ import rv32i_types::*;
         dfp_read = '0;
     
         if(!cache_hit && hit_check.valid && 
-            !matching_addr && 
+            /*!matching_addr && */ 
             !hit_check.fwd)
         begin
             

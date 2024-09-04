@@ -22,8 +22,12 @@ module cache (
     output  logic           in_writeBack,
     output  logic           in_compare,
     output  logic           in_idle,
-    input   logic           flush_latch
+    input   logic           flush_latch,
 
+    // new l1/l2 signals
+    output  logic           l1_dirty,
+    output  logic   [255:0] ufp_dirty_data,
+    input   logic   [31:0]  ufp_check_line_addr
 );
 
 
@@ -33,10 +37,16 @@ module cache (
     logic [255:0] data_out   [4];
     logic [31: 0] cache_wmask;
 
+    // To L2 Data Array Signals
+    logic [255:0] data_out1  [4];
+
     // Tag Array Signals
     logic         t_write_en [4];
     logic [23 :0] tag_in     [4];
     logic [23: 0] tag_out    [4];
+
+    // To L2 Tag Array Signals
+    logic [23 :0] tag_out1    [4];
 
     // Valid Array Signals
     logic         v_write_en [4];
@@ -277,6 +287,48 @@ module cache (
         
     end
 
+    // L2 HIT Check
+    logic [3:0] l2way_hit;
+    logic [1:0] l2way_index;
+
+    always_comb begin : l2_pull_back_logic
+        // Check for l2 hits
+        l2way_hit[0] = (tag_out1[0][22:0] == ufp_check_line_addr[31:9]);
+        l2way_hit[1] = (tag_out1[1][22:0] == ufp_check_line_addr[31:9]);
+        l2way_hit[2] = (tag_out1[2][22:0] == ufp_check_line_addr[31:9]);
+        l2way_hit[3] = (tag_out1[3][22:0] == ufp_check_line_addr[31:9]);
+
+        // Set the way index
+        if (l2way_hit[0] == 1'b1) begin
+            l2way_index = 2'b00;
+            if(tag_out1[l2way_index][23] == 1'b1) l1_dirty = 1'b1;
+            else l1_dirty = 1'b0;
+        end else if (l2way_hit[2] == 1'b1) begin
+            l2way_index = 2'b10;
+            if(tag_out1[l2way_index][23] == 1'b1) l1_dirty = 1'b1;
+            else l1_dirty = 1'b0;
+        end else if (l2way_hit[1] == 1'b1) begin
+            l2way_index = 2'b01;
+            if(tag_out1[l2way_index][23] == 1'b1) l1_dirty = 1'b1;
+            else l1_dirty = 1'b0;
+        end else if (l2way_hit[3] == 1'b1) begin
+            l2way_index = 2'b11;
+            if(tag_out1[l2way_index][23] == 1'b1) l1_dirty = 1'b1;
+            else l1_dirty = 1'b0;
+        end else begin
+            l2way_index = 'x;
+            l1_dirty = 1'b0;
+        end
+        
+        // Clean or dirty
+        if(tag_out1[l2way_index][23] == 1'b1) l1_dirty = 1'b1;
+        else l1_dirty = 1'b0;
+
+        // Set the data out
+        ufp_dirty_data = data_out1[l2way_index];
+        
+    end : l2_pull_back_logic
+
     generate for (genvar i = 0; i < 4; i++) begin : arrays
         mp_cache_data_array data_array (
             .clk0       (clk),
@@ -285,7 +337,11 @@ module cache (
             .wmask0     (cache_wmask),
             .addr0      (set_index),
             .din0       (data_in[i]),
-            .dout0      (data_out[i])
+            .dout0      (data_out[i]),
+            .clk1       (clk),
+            .csb1       (1'b0),
+            .addr1      (ufp_check_line_addr[8:5]),
+            .dout1      (data_out1[i])
         );
         mp_cache_tag_array tag_array (
             .clk0       (clk),
@@ -293,7 +349,11 @@ module cache (
             .web0       (!t_write_en[i]),
             .addr0      (set_index),
             .din0       (tag_in[i]),
-            .dout0      (tag_out[i])
+            .dout0      (tag_out[i]),
+            .clk1       (clk),
+            .csb1       (1'b0),
+            .addr1      (ufp_check_line_addr[8:5]),
+            .dout1      (tag_out1[i])
         );
         ff_array #(.WIDTH(1)) valid_array (
             .clk0       (clk),

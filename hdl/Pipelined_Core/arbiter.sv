@@ -40,12 +40,12 @@ module arbiter(
     assign bmem_fake = bmem_ready;
     
     // logic i_cache_resp, d_cache_resp;
-    logic [31:0] i_dfp_addr, d_dfp_addr, i_dfp_raddr;
-    logic i_dfp_read, d_dfp_read;
-    logic i_dfp_write, d_dfp_write;
-    logic [255:0] i_dfp_rdata, d_dfp_rdata;
-    logic [255:0] i_dfp_wdata, d_dfp_wdata;
-    logic i_dfp_resp, d_dfp_resp;
+    logic [31:0] i_dfp_addr, d_dfp_addr, i_dfp_raddr, d_dfp_addr_l2, d_ufp_addr_l2;
+    logic i_dfp_read, d_dfp_read, d_dfp_read_l2, d_ufp_read_l2;
+    logic i_dfp_write, d_dfp_write, d_dfp_write_l2, d_ufp_write_l2;
+    logic [255:0] i_dfp_rdata, d_dfp_rdata, d_dfp_rdata_l2, d_ufp_rdata_l2;
+    logic [255:0] i_dfp_wdata, d_dfp_wdata, d_dfp_wdata_l2, d_ufp_wdata_l2;
+    logic i_dfp_resp, d_dfp_resp, d_dfp_resp_l2, d_ufp_resp_l2;
 
     logic i_submit, d_submit;
     logic in_writeBack, in_compare, in_idle;
@@ -147,72 +147,124 @@ module arbiter(
     end
 
    
-
+    logic l2_cache_ready;
 
     always_ff @( posedge clk ) begin : making_request
         if(rst) begin
             write_counter <= '0;
-            bmem_wdata <= '0;
             w_done <= '0;
-            bmem_write <= '0;
-            bmem_read <= '0;
             i_submit <= '0;
             d_submit <= '0;
+            l2_cache_ready <= 1'b1;
+            d_ufp_read_l2 <= 1'b0;
+            d_ufp_write_l2 <= 1'b0;
         end else begin
-            if(bmem_ready) begin
+            if(l2_cache_ready) begin
                 // FIRST IMEM REQESTS
                 if(i_dfp_read && !bmem_write && !i_submit) begin
-                    bmem_addr <= i_dfp_addr;
-                    bmem_read <= 1'b1;
-                    bmem_write <= 1'b0;
+
+                    d_ufp_addr_l2 <= i_dfp_addr;
+                    d_ufp_read_l2 <= 1'b1;
+                    d_ufp_write_l2 <= 1'b0;
                     w_done <= 1'b0;
                     i_submit <= 1'b1;
+
+                    l2_cache_ready <= 1'b0;
+
                 end else if(d_dfp_read && !d_submit && !bmem_read) begin // DMEM READ
-                    bmem_addr <= d_dfp_addr;
-                    bmem_read <= 1'b1;
-                    bmem_write <= 1'b0;
+                   
+                    d_ufp_addr_l2 <= d_dfp_addr; //@TODO
+                    d_ufp_read_l2 <= 1'b1;
+                    d_ufp_write_l2 <= 1'b0;
                     w_done <= 1'b0;
                     d_submit <= 1'b1;
+
+                    l2_cache_ready <= 1'b0;
+
                 end else if((d_dfp_write || write_counter != '0) && !w_done) begin // DMEM WRITE
-                    bmem_addr <= d_dfp_addr;
-                    bmem_read <= 1'b0;
-                    bmem_write <= 1'b1;
-
-                    if(write_counter == 2'd0) begin bmem_wdata <= d_dfp_wdata[63:0]; write_counter <= write_counter + 2'd1; end
-                    if(write_counter == 2'd1) begin bmem_wdata <= d_dfp_wdata[127:64]; write_counter <= write_counter + 2'd1; end
-                    if(write_counter == 2'd2) begin bmem_wdata <= d_dfp_wdata[191:128]; write_counter <= write_counter + 2'd1; end
-                    if(write_counter == 2'd3) begin 
-                        bmem_wdata <= d_dfp_wdata[255:192]; 
-                        write_counter <= 2'd0; 
-                        w_done <= 1'b1;
-                    end
-                end else begin
-                    bmem_addr <= '0;
-                    bmem_read <= 1'b0;
-                    bmem_write <= 1'b0;
-                    bmem_wdata <= '0;
+                    
+                    d_ufp_addr_l2 <= d_dfp_addr; //@TODO
+                    d_ufp_read_l2 <= 1'b0;
+                    d_ufp_write_l2 <= 1'b1;
+                    d_ufp_wdata_l2 <= d_dfp_wdata; 
                     w_done <= 1'b0;
+
+                    l2_cache_ready <= 1'b0;
+
+                end else begin
+
+                    d_ufp_addr_l2 <= '0;
+                    d_ufp_read_l2 <= 1'b0;
+                    d_ufp_write_l2 <= 1'b0;
+                    d_ufp_wdata_l2 <= '0;
+                    w_done <= 1'b0;
+
+                    l2_cache_ready <= 1'b1;
+
                 end
-            end else begin
-                bmem_addr <= '0;
-                bmem_read <= 1'b0;
-                bmem_write <= 1'b0;
-                bmem_wdata <= '0;
-                w_done <= 1'b0;
             end
 
-            if(i_dfp_resp | (flush | jump_en | jalr_en)) begin
+            if((d_ufp_resp_l2 | (flush | jump_en | jalr_en)) && i_submit) begin
                 i_submit <= 1'b0;
+                l2_cache_ready <= 1'b1;
+                if(d_ufp_read_l2) d_ufp_read_l2 <= 1'b0;
             end
 
-            if(d_dfp_resp /*| (flush)*/) begin
+            if(d_ufp_resp_l2 && d_submit/*| (flush)*/) begin
                 d_submit <= 1'b0;
+                l2_cache_ready <= 1'b1;
+                w_done <= 1'b1;
             end
         end
     end
 
-    logic receive_id; // 0 - i cache, 1 - d cache
-    always_ff @( posedge clk ) begin : receiving_data
+    logic p2o_bmem;
+    logic [1:0] write_counter_bmem;
+    logic w_done_bmem;
+    always_ff @(posedge clk) begin
+        if(rst) begin
+            p2o_bmem <= 1'b0;
+            write_counter_bmem <= 2'b00;
+            bmem_addr <= '0;
+            bmem_read <= 1'b0;
+            bmem_write <= 1'b0;
+            bmem_wdata <= '0;
+        end else begin
+            if(bmem_ready) begin
+                if(d_dfp_read_l2 && ~p2o_bmem) begin
+                    bmem_addr <= d_dfp_addr_l2;
+                    bmem_read <= 1'b1;
+                    bmem_write <= 1'b0;
+                    bmem_wdata <= '0;
+                    p2o_bmem <= 1'b1;
+                    w_done_bmem <= 1'b0;    
+                end else if((d_dfp_write_l2 || write_counter != '0) && !w_done && !d_dfp_read_l2) begin
+
+                    bmem_addr <= d_dfp_addr_l2;
+                    bmem_read <= 1'b0;
+                    bmem_write <= 1'b1;
+
+                    w_done_bmem <= 1'b0;
+
+                    if(write_counter_bmem == 2'd0) begin bmem_wdata <= d_dfp_wdata_l2[63:0]; write_counter_bmem <= write_counter_bmem + 2'd1; end
+                    if(write_counter_bmem == 2'd1) begin bmem_wdata <= d_dfp_wdata_l2[127:64]; write_counter_bmem <= write_counter_bmem + 2'd1; end
+                    if(write_counter_bmem == 2'd2) begin bmem_wdata <= d_dfp_wdata_l2[191:128]; write_counter_bmem <= write_counter_bmem + 2'd1; end
+                    if(write_counter_bmem == 2'd3) begin 
+                        bmem_wdata <= d_dfp_wdata_l2[255:192]; 
+                        write_counter_bmem <= 2'd0; 
+                        w_done_bmem <= 1'b1;
+                    end
+                end else begin
+                    w_done_bmem <= 1'b0;
+                    bmem_addr <= '0;
+                    bmem_read <= 1'b0;
+                    bmem_write <= 1'b0;
+                    bmem_wdata <= '0;
+                    w_done_bmem <= 1'b0;
+                end
+            end
+        end
+
         if(rst) begin
             receive_counter <= '0;
             done <= '0;
@@ -229,6 +281,7 @@ module arbiter(
                     chunk3 <= bmem_rdata; 
                     receive_counter <= 2'd0; 
                     done <= 1'b0;
+                    p2o_bmem <= 1'b0;
                 end
             end else begin
                 done <= 1'b0;
@@ -236,26 +289,22 @@ module arbiter(
         end
     end
 
-
     always_comb begin 
         // Receiving a request
         i_dfp_rdata = '0;
         i_dfp_resp = 1'b0;
         d_dfp_rdata = '0;
         d_dfp_resp = 1'b0;
-        i_dfp_raddr = '0;
-        if(bmem_raddr[31:5] == dmem_addr_use[31:5] && done) begin
-            d_dfp_rdata = {bmem_rdata, chunk2, chunk1, chunk0};
-            d_dfp_resp = 1'b1;
-        end
-            
-        if(bmem_raddr[31:5] == i_dfp_addr[31:5] && done) begin
-            i_dfp_rdata = {bmem_rdata, chunk2, chunk1, chunk0};
-            i_dfp_raddr = bmem_raddr;
-            i_dfp_resp = 1'b1;
+        d_dfp_resp_l2 = 1'b0;
+
+        // for l2 cache
+        if(/*bmem_raddr[31:5] == dmem_addr_use[31:5] &&*/ done) begin
+            d_dfp_rdata_l2 = {bmem_rdata, chunk2, chunk1, chunk0};
+            d_dfp_resp_l2 = 1'b1;
         end
 
-        if (w_done) d_dfp_resp = 1'b1;
+        if (w_done_bmem) d_dfp_resp_l2 = 1'b1;
+
     end
 
     logic [31:0] pc_prev;
@@ -289,12 +338,17 @@ module arbiter(
     // memory side signals, dfp -> downward facing port
         .dfp_addr(i_dfp_addr),                   // dfp_addr[4:0] should always be '0, that is, all accesses to physical memory must be 256-bit aligned.
         .dfp_read(i_dfp_read),
-        .dfp_rdata(i_dfp_rdata),
+        .dfp_rdata(d_ufp_rdata_l2),
         .dfp_raddr(i_dfp_raddr),
-        .dfp_resp(i_dfp_resp)
+        .dfp_resp(d_ufp_resp_l2 & i_submit)
     );
 
+    // L2 to l1 signals
+    logic l1_dirty;
+    logic [31:0] ufp_check_line_addr;
+    logic [255:0] ufp_dirty_data;
 
+    // No need for L1 to L2 signals from i cache since read only !!!
 
     cache d_cache (
         .clk(clk),
@@ -320,10 +374,51 @@ module arbiter(
         .dfp_addr(d_dfp_addr),                   // dfp_addr[4:0] should always be '0, that is, all accesses to physical memory must be 256-bit aligned.
         .dfp_read(d_dfp_read),
         .dfp_write(d_dfp_write),
-        .dfp_rdata(d_dfp_rdata),
+        .dfp_rdata(d_ufp_rdata_l2),
         .dfp_wdata(d_dfp_wdata),
-        .dfp_resp(d_dfp_resp)
+        .dfp_resp(d_ufp_resp_l2 & d_submit),
+
+        // L2 cache signals
+        .l1_dirty(l1_dirty),
+        .ufp_dirty_data(ufp_dirty_data),
+        .ufp_check_line_addr(ufp_check_line_addr)
     );
+
+    l2cache l2 (
+        .clk(clk),
+        .rst(rst),
+        .flush(1'b0),
+
+        // cpu side signals, ufp -> upward facing port
+        .ufp_addr(d_ufp_addr_l2),                   // ufp_addr[1:0] will always be '0, that is, all accesses to the cache on UFP are 32-bit aligned
+        .ufp_rmask(d_ufp_read_l2 & (i_submit | d_submit)),                  // specifies which bytes of ufp_rdata the UFP will use. You may return any byte at a position whose corresponding bit in ufp_rmask is zero. A nonzero ufp_rmask indicates a read request
+        .ufp_wmask(d_ufp_write_l2),                  // tells the cache which bytes out of the 4 bytes in ufp_wdata are to be written. A nonzero ufp_wmask indicates a write request.
+        .ufp_rdata(d_ufp_rdata_l2),
+        .ufp_wdata(d_ufp_wdata_l2),
+        .ufp_resp(d_ufp_resp_l2),
+
+        // memory side signals, dfp -> downward facing port
+        .dfp_addr(d_dfp_addr_l2),                   // dfp_addr[4:0] should always be '0, that is, all accesses to physical memory must be 256-bit aligned.
+        .dfp_read(d_dfp_read_l2),
+        .dfp_write(d_dfp_write_l2),
+        .dfp_rdata(d_dfp_rdata_l2),
+        .dfp_wdata(d_dfp_wdata_l2),
+        .dfp_resp(d_dfp_resp_l2),
+
+        .in_writeBack(),
+        .in_compare(),
+        .in_idle(),
+        .flush_latch('0),
+
+        // new l1 outwards
+        .l1_dirty(l1_dirty),
+        .ufp_dirty_data(ufp_dirty_data),
+        .ufp_check_line_addr(ufp_check_line_addr),
+
+        .imem_raddr(i_dfp_raddr),
+
+        .icache_request(1'b0) // need the signal from arbiter that signifies a i cache request to skip the pulling stages
+);
 
 
 endmodule : arbiter

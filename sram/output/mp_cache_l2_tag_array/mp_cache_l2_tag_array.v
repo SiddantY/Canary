@@ -2,7 +2,7 @@
 // Words: 16
 // Word size: 24
 
-module mp_cache_tag_array(
+module mp_cache_l2_tag_array(
 `ifdef USE_POWER_PINS
     vdd,
     gnd,
