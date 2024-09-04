@@ -25,7 +25,6 @@ nop
 nop
 nop
 nop
-nop
 
 # this should take many cycles
 # if this writes back to the ROB after the following instructions, you get credit for CP2
