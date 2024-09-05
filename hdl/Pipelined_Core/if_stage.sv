@@ -26,7 +26,7 @@ always_comb
     begin
 
         imem_rmask = 4'b1111;
-        imem_addr = (dstall) ? pc_prev : pc;
+        imem_addr = pc;
 
         if(imem_resp)
             begin
