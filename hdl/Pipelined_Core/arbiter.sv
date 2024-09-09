@@ -149,6 +149,9 @@ module arbiter(
    
     logic l2_cache_ready;
 
+
+    logic mid_flush;
+
     always_ff @( posedge clk ) begin : making_request
         if(rst) begin
             write_counter <= '0;
@@ -158,10 +161,11 @@ module arbiter(
             l2_cache_ready <= 1'b1;
             d_ufp_read_l2 <= 1'b0;
             d_ufp_write_l2 <= 1'b0;
+            mid_flush <= 1'b0;
         end else begin
             if(l2_cache_ready) begin
                 // FIRST IMEM REQESTS
-                if(i_dfp_read && !bmem_write && !i_submit) begin
+                if(i_dfp_read && !i_submit) begin
 
                     d_ufp_addr_l2 <= i_dfp_addr;
                     d_ufp_read_l2 <= 1'b1;
@@ -171,7 +175,7 @@ module arbiter(
 
                     l2_cache_ready <= 1'b0;
 
-                end else if(d_dfp_read && !d_submit && !bmem_read) begin // DMEM READ
+                end else if(d_dfp_read && !d_submit && !i_submit) begin // DMEM READ
                    
                     d_ufp_addr_l2 <= d_dfp_addr; //@TODO
                     d_ufp_read_l2 <= 1'b1;
@@ -181,12 +185,13 @@ module arbiter(
 
                     l2_cache_ready <= 1'b0;
 
-                end else if((d_dfp_write || write_counter != '0) && !w_done) begin // DMEM WRITE
+                end else if(d_dfp_write && !d_submit && !i_submit) begin // DMEM WRITE
                     
                     d_ufp_addr_l2 <= d_dfp_addr; //@TODO
                     d_ufp_read_l2 <= 1'b0;
                     d_ufp_write_l2 <= 1'b1;
-                    d_ufp_wdata_l2 <= d_dfp_wdata; 
+                    d_ufp_wdata_l2 <= d_dfp_wdata;
+                    d_submit <= 1'b1; 
                     w_done <= 1'b0;
 
                     l2_cache_ready <= 1'b0;
@@ -202,9 +207,20 @@ module arbiter(
                     l2_cache_ready <= 1'b1;
 
                 end
-            end
+            end 
+            // else begin
+            //     if(d_ufp_read_l2 && i_submit && (jalr_en)) begin
+            //         mid_flush <= 1'b1;
+            //         // d_ufp_addr_l2 <= imem_addr;
+            //     end
 
-            if((d_ufp_resp_l2 | (flush | jump_en | jalr_en)) && i_submit) begin
+            //     if(d_dfp_resp_l2) begin
+            //         mid_flush <= 1'b0;
+            //     end
+            
+            // end
+
+            if(d_ufp_resp_l2 /*(d_ufp_resp_l2 | (flush | jump_en | jalr_en))*/ && i_submit) begin
                 i_submit <= 1'b0;
                 l2_cache_ready <= 1'b1;
                 if(d_ufp_read_l2) d_ufp_read_l2 <= 1'b0;
@@ -213,17 +229,20 @@ module arbiter(
             if(d_ufp_resp_l2 && d_submit/*| (flush)*/) begin
                 d_submit <= 1'b0;
                 l2_cache_ready <= 1'b1;
+                if(d_ufp_read_l2) d_ufp_read_l2 <= 1'b0;
+                if(d_ufp_write_l2) d_ufp_write_l2 <= 1'b0;
                 w_done <= 1'b1;
             end
         end
     end
 
-    logic p2o_bmem;
+    logic bmem_read_submit;
     logic [1:0] write_counter_bmem;
     logic w_done_bmem;
+
     always_ff @(posedge clk) begin
         if(rst) begin
-            p2o_bmem <= 1'b0;
+            bmem_read_submit <= 1'b0;
             write_counter_bmem <= 2'b00;
             bmem_addr <= '0;
             bmem_read <= 1'b0;
@@ -231,14 +250,14 @@ module arbiter(
             bmem_wdata <= '0;
         end else begin
             if(bmem_ready) begin
-                if(d_dfp_read_l2 && ~p2o_bmem) begin
+                if(d_dfp_read_l2 && !bmem_read_submit) begin
                     bmem_addr <= d_dfp_addr_l2;
                     bmem_read <= 1'b1;
                     bmem_write <= 1'b0;
                     bmem_wdata <= '0;
-                    p2o_bmem <= 1'b1;
+                    bmem_read_submit <= 1'b1;
                     w_done_bmem <= 1'b0;    
-                end else if((d_dfp_write_l2 || write_counter != '0) && !w_done && !d_dfp_read_l2) begin
+                end else if((d_dfp_write_l2 || write_counter_bmem != '0) && !w_done_bmem && !d_dfp_read_l2) begin
 
                     bmem_addr <= d_dfp_addr_l2;
                     bmem_read <= 1'b0;
@@ -281,7 +300,7 @@ module arbiter(
                     chunk3 <= bmem_rdata; 
                     receive_counter <= 2'd0; 
                     done <= 1'b0;
-                    p2o_bmem <= 1'b0;
+                    bmem_read_submit <= 1'b0;
                 end
             end else begin
                 done <= 1'b0;
@@ -296,6 +315,7 @@ module arbiter(
         d_dfp_rdata = '0;
         d_dfp_resp = 1'b0;
         d_dfp_resp_l2 = 1'b0;
+        d_dfp_rdata_l2 = '0;
 
         // for l2 cache
         if(/*bmem_raddr[31:5] == dmem_addr_use[31:5] &&*/ done) begin
@@ -340,7 +360,7 @@ module arbiter(
         .dfp_read(i_dfp_read),
         .dfp_rdata(d_ufp_rdata_l2),
         .dfp_raddr(i_dfp_raddr),
-        .dfp_resp(d_ufp_resp_l2 & i_submit)
+        .dfp_resp(d_ufp_resp_l2 & i_submit && (i_dfp_addr == i_dfp_raddr))
     );
 
     // L2 to l1 signals
