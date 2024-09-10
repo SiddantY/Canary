@@ -596,7 +596,12 @@ package rv32i_types_1;
 
 endpackage : rv32i_types_1
 
-
+package cache_types;
+    typedef struct {
+        logic [255:0]   cache_line;
+        logic [1:0]     mesi_state;
+    } cache_types_t;
+endpackage : cache_types
 /*
 Every reservation station you add
  - Add ports to rob
