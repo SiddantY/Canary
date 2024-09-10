@@ -601,6 +601,12 @@ package cache_types;
         logic [255:0]   cache_line;
         logic [1:0]     mesi_state;
     } cache_types_t;
+    typedef enum logic [1:0] {
+        invalid   = 2'b00,
+        shared    = 2'b01, 
+        exclusive = 2'b10,
+        modified  = 2'b11
+    }  MESI_states;
 endpackage : cache_types
 /*
 Every reservation station you add
