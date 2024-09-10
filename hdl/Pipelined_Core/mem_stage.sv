@@ -8,6 +8,7 @@ import rv32i_types::*;
 
     input   logic   [31:0]      dmem_rdata,
     input   logic               dmem_resp,
+    input   logic               got_dmem_resp,
 
     output  logic   [3:0]       dmem_rmask,
     output  logic   [3:0]       dmem_wmask,
@@ -42,7 +43,7 @@ always_ff @(posedge clk)
             end
     end : d_no_rep
 
-always_latch
+always_comb
     begin : dstall_logic
 
         if(rst)
@@ -57,7 +58,7 @@ always_latch
                         dstall = 1'b1;
                     end
                 
-                if(dmem_resp) // response set stall to low
+                if(dmem_resp | got_dmem_resp) // response set stall to low
                     begin
                         dstall = 1'b0;
                     end

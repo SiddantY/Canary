@@ -81,6 +81,21 @@ logic [3:0] monitor_mem_wmask;
 logic [31:0] monitor_mem_rdata;
 logic [31:0] monitor_mem_wdata;
 
+
+logic got_dmem_resp;
+
+always_ff @(posedge clk) begin
+
+    if (rst) got_dmem_resp <= 1'b0;
+
+    else if (dmem_resp) begin
+        got_dmem_resp <= 1'b1;
+    end
+
+    else if (!dstall) got_dmem_resp <= 1'b0;
+
+end 
+
 always_ff @(posedge clk) // reworks according to monitor_valid @TODO
     begin : order_control_block
         
@@ -213,6 +228,7 @@ mem_stage mem_stage_dec_1
 
     .dmem_rdata(dmem_rdata), // could bring the mux out to save area
     .dmem_resp(dmem_resp),
+    .got_dmem_resp,
 
     .dmem_rmask(dmem_rmask),
     .dmem_wmask(dmem_wmask),
