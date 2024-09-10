@@ -22,13 +22,32 @@ import rv32i_types::*;
 
 logic [31:0] pc, pc_prev;
 
+logic resp_received;
+logic [31:0] held_inst;
+
+always_ff @(posedge clk) begin
+    if(rst) begin
+        resp_received <= 1'b0;
+        held_inst <= '0;
+    end else begin
+        if(imem_resp) begin
+            resp_received <= 1'b1;
+            held_inst <= imem_rdata;
+        end
+
+        if(~(istall | dstall)) begin
+            resp_received <= 1'b0;
+        end
+    end
+end
+
 always_comb
     begin
 
-        imem_rmask = 4'b1111;
+        imem_rmask = resp_received ? 4'b0 : 4'b1111;
         imem_addr = pc;
 
-        if(imem_resp)
+        if(imem_resp | resp_received)
             begin
                 istall = 1'b0;
             end
@@ -43,7 +62,7 @@ always_comb
 
         if_id_reg_next.rvfi.monitor_valid = 1'b1;
         if_id_reg_next.rvfi.monitor_order = order;
-        if_id_reg_next.rvfi.monitor_inst  = imem_rdata;
+        if_id_reg_next.rvfi.monitor_inst  = resp_received ? held_inst : imem_rdata;
         if_id_reg_next.rvfi.monitor_pc_rdata = pc;
         if_id_reg_next.rvfi.monitor_pc_wdata = pc + 3'b100; // will change in execute if jal/jalr/branch
     end

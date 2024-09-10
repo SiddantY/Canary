@@ -43,7 +43,7 @@ always_ff @(posedge clk)
             end
     end : d_no_rep
 
-always_comb
+always_latch
     begin : dstall_logic
 
         if(rst)
@@ -58,7 +58,7 @@ always_comb
                         dstall = 1'b1;
                     end
                 
-                if(dmem_resp | got_dmem_resp) // response set stall to low
+                if(dmem_resp) // response set stall to low
                     begin
                         dstall = 1'b0;
                     end

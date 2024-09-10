@@ -35,6 +35,7 @@ logic [63:0] order;
 
 logic istall;
 logic dstall;
+
 logic   [31:0]  imem_addr;
 logic   [3:0]   imem_rmask;
 logic   [31:0]  imem_rdata;
@@ -92,7 +93,7 @@ always_ff @(posedge clk) begin
         got_dmem_resp <= 1'b1;
     end
 
-    else if (!dstall) got_dmem_resp <= 1'b0;
+    else if (~dstall && ~istall) got_dmem_resp <= 1'b0;
 
 end 
 
