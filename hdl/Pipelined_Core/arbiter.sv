@@ -256,9 +256,15 @@ module arbiter(
 
                     w_done_bmem <= 1'b0;
 
-                    if(write_counter_bmem == 2'd0) begin bmem_wdata <= d_dfp_wdata_l2[63:0]; write_counter_bmem <= write_counter_bmem + 2'd1; end
-                    if(write_counter_bmem == 2'd1) begin bmem_wdata <= d_dfp_wdata_l2[127:64]; write_counter_bmem <= write_counter_bmem + 2'd1; end
-                    if(write_counter_bmem == 2'd2) begin bmem_wdata <= d_dfp_wdata_l2[191:128]; write_counter_bmem <= write_counter_bmem + 2'd1; end
+                    if(write_counter_bmem == 2'd0) begin 
+                        bmem_wdata <= d_dfp_wdata_l2[63:0]; 
+                        write_counter_bmem <= write_counter_bmem + 2'd1; end
+                    if(write_counter_bmem == 2'd1) begin 
+                        bmem_wdata <= d_dfp_wdata_l2[127:64]; 
+                        write_counter_bmem <= write_counter_bmem + 2'd1; end
+                    if(write_counter_bmem == 2'd2) begin 
+                        bmem_wdata <= d_dfp_wdata_l2[191:128]; 
+                        write_counter_bmem <= write_counter_bmem + 2'd1; end
                     if(write_counter_bmem == 2'd3) begin 
                         bmem_wdata <= d_dfp_wdata_l2[255:192]; 
                         write_counter_bmem <= 2'd0; 
@@ -430,5 +436,7 @@ module arbiter(
         .icache_request(1'b0) // need the signal from arbiter that signifies a i cache request to skip the pulling stages
 );
 
+    // MESI mesi_fsm(
 
+    // );
 endmodule : arbiter
