@@ -55,7 +55,35 @@ module top_tb;
     //     // .bmem_rvalid(bmem_itf.rvalid)
     // );
 
-    ooo_cpu dut(
+    // ooo_cpu dut(
+    //     .clk            (clk),
+    //     .rst            (rst),
+
+    //     // Explicit dual port connections when caches are not integrated into design yet (Before CP3)
+    //     // .imem_addr      (mem_itf_i.addr),
+    //     // .imem_rmask     (mem_itf_i.rmask),
+    //     // .imem_rdata     (mem_itf_i.rdata),
+    //     // .imem_resp      (mem_itf_i.resp),
+
+    //     // .dmem_addr      (mem_itf_d.addr),
+    //     // .dmem_rmask     (mem_itf_d.rmask),
+    //     // .dmem_wmask     (mem_itf_d.wmask),
+    //     // .dmem_rdata     (mem_itf_d.rdata),
+    //     // .dmem_wdata     (mem_itf_d.wdata),
+    //     // .dmem_resp      (mem_itf_d.resp)
+
+    //     // Single memory port connection when caches are integrated into design (CP3 and after)
+    //     .bmem_addr(bmem_itf.addr),
+    //     .bmem_read(bmem_itf.read),
+    //     .bmem_write(bmem_itf.write),
+    //     .bmem_wdata(bmem_itf.wdata),
+    //     .bmem_ready(bmem_itf.ready),
+    //     .bmem_raddr(bmem_itf.raddr),
+    //     .bmem_rdata(bmem_itf.rdata),
+    //     .bmem_rvalid(bmem_itf.rvalid)
+    // );
+
+    cpu_top dut(
         .clk            (clk),
         .rst            (rst),
 

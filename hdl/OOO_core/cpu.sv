@@ -2,32 +2,38 @@ module ooo_cpu
 import rv32i_types::*;
 (
     // Explicit dual port connections when caches are not integrated into design yet (Before CP3)
-    input   logic           clk,
-    input   logic           rst,
+    input   logic               clk,
+    input   logic               rst,
 
-    // output  logic   [31:0]  imem_addr,
-    // output  logic   [3:0]   imem_rmask,
-    // input   logic   [31:0]  imem_rdata,
-    // input   logic           imem_resp,
+    output  logic               flush,
+    output  logic               jump_en,
+    output  logic               jalr_done,
 
-    // output  logic   [31:0]  dmem_addr,
-    // output  logic   [3:0]   dmem_rmask,
-    // output  logic   [3:0]   dmem_wmask,
-    // input   logic   [31:0]  dmem_rdata,
-    // output  logic   [31:0]  dmem_wdata,
-    // input   logic           dmem_resp
+    output  logic   [31:0]      imem_addr,
+    output  logic               input_valid,
+    input   logic   [31:0]      imem_rdata,
+    input   logic               imem_resp,
+    input   logic               imem_stall,
+    input   logic   [31:0]      imem_raddr,
+
+    output  logic   [31:0]      dmem_addr,
+    output  logic   [3:0]       dmem_rmask,
+    output  logic   [3:0]       dmem_wmask,
+    input   logic   [31:0]      dmem_rdata,
+    output  logic   [31:0]      dmem_wdata,
+    input   logic               dmem_resp
 
     // Single memory port connection when caches are integrated into design (CP3 and after)
     
-    output logic   [31:0]      bmem_addr,
-    output logic               bmem_read,
-    output logic               bmem_write,
-    output logic   [63:0]      bmem_wdata,
+    // output logic   [31:0]      bmem_addr,
+    // output logic               bmem_read,
+    // output logic               bmem_write,
+    // output logic   [63:0]      bmem_wdata,
     
-    input logic               bmem_ready,
-    input logic   [31:0]      bmem_raddr,
-    input logic   [63:0]      bmem_rdata,
-    input logic               bmem_rvalid
+    // input logic               bmem_ready,
+    // input logic   [31:0]      bmem_raddr,
+    // input logic   [63:0]      bmem_rdata,
+    // input logic               bmem_rvalid
     
 );
 
@@ -42,12 +48,12 @@ import rv32i_types::*;
 
     logic branch_pred;
 
-    logic jump_en;//, jump_en_latch;
+    // logic jump_en;//, jump_en_latch;
     logic jalr_en;
-    logic jalr_done;
+    // logic jalr_done;
     logic [31:0] jalr_pc;
 
-    logic flush;
+    // logic flush;
     logic [31:0] missed_pc;
 
     logic [31:0] pr1_val, pr2_val, pr1_val_mul, pr2_val_mul;
@@ -66,22 +72,22 @@ import rv32i_types::*;
     rvfi_commit_packet_t committer;
 
 
-    logic   [31:0]  imem_addr;
-    logic           imem_read;
-    logic   [31:0]  imem_rdata;
-    logic           imem_resp;
-    logic   [31:0]  imem_raddr;
-    logic               input_valid;
-    logic               imem_stall;
+    // logic   [31:0]  imem_addr;
+    // logic           imem_read;
+    // logic   [31:0]  imem_rdata;
+    // logic           imem_resp;
+    // logic   [31:0]  imem_raddr;
+    // logic               input_valid;
+    // logic               imem_stall;
 
 
 
-    logic   [31:0]  dmem_addr;
-    logic   [3:0]   dmem_rmask;
-    logic   [3:0]   dmem_wmask;
-    logic   [31:0]  dmem_rdata;
-    logic   [31:0]  dmem_wdata;
-    logic           dmem_resp;
+    // logic   [31:0]  dmem_addr;
+    // logic   [3:0]   dmem_rmask;
+    // logic   [3:0]   dmem_wmask;
+    // logic   [31:0]  dmem_rdata;
+    // logic   [31:0]  dmem_wdata;
+    // logic           dmem_resp;
 
     logic   [31:0]  dmem_raddr; // DOES NOTHING YET
 
@@ -157,47 +163,47 @@ import rv32i_types::*;
         .dmem_resp(dmem_resp)
     );
 
-    arbiter arbiter( // ASSERTS ADDR UNTIL DATA IS RECIEVED, 1 CACHE QUERY AT A TIME
-        .clk(clk),
-        .rst(rst),
-        .flush(flush),
-        .jump_en(jump_en),
-        .jalr_en(jalr_done),
-        // .br_en(bren),
+    // arbiter arbiter( // ASSERTS ADDR UNTIL DATA IS RECIEVED, 1 CACHE QUERY AT A TIME
+    //     .clk(clk),
+    //     .rst(rst),
+    //     .flush(flush),
+    //     .jump_en(jump_en),
+    //     .jalr_en(jalr_done),
+    //     // .br_en(bren),
 
-        .imem_addr(imem_addr),
-        .input_valid(input_valid),
-        .imem_stall(imem_stall),
-        .imem_rdata(imem_rdata),
-        .imem_raddr(imem_raddr),
-        .imem_resp(imem_resp),
-        // .ppc(ppc),
-        // .pc_req(pc_req),
-        // .pc_req_out(pc_req_out),
-        // .br_en(br_en),
+    //     .imem_addr(imem_addr),
+    //     .input_valid(input_valid),
+    //     .imem_stall(imem_stall),
+    //     .imem_rdata(imem_rdata),
+    //     .imem_raddr(imem_raddr),
+    //     .imem_resp(imem_resp),
+    //     // .ppc(ppc),
+    //     // .pc_req(pc_req),
+    //     // .pc_req_out(pc_req_out),
+    //     // .br_en(br_en),
 
-        // .ppc_out(ppc_out),
-        // .br_en_out(br_en_out),
+    //     // .ppc_out(ppc_out),
+    //     // .br_en_out(br_en_out),
 
-        .dmem_addr(dmem_addr),
-        .dmem_rmask(dmem_rmask),
-        .dmem_wmask(dmem_wmask),
-        .dmem_wdata(dmem_wdata),
-        // .dmem_raddr(dmem_raddr),
-        .dmem_rdata(dmem_rdata),
-        .dmem_resp(dmem_resp),
+    //     .dmem_addr(dmem_addr),
+    //     .dmem_rmask(dmem_rmask),
+    //     .dmem_wmask(dmem_wmask),
+    //     .dmem_wdata(dmem_wdata),
+    //     // .dmem_raddr(dmem_raddr),
+    //     .dmem_rdata(dmem_rdata),
+    //     .dmem_resp(dmem_resp),
 
 
-        .bmem_addr(bmem_addr),
-        .bmem_read(bmem_read),
-        .bmem_write(bmem_write),
-        .bmem_wdata(bmem_wdata),
-        .bmem_ready(bmem_ready),
+    //     .bmem_addr(bmem_addr),
+    //     .bmem_read(bmem_read),
+    //     .bmem_write(bmem_write),
+    //     .bmem_wdata(bmem_wdata),
+    //     .bmem_ready(bmem_ready),
 
-        .bmem_raddr(bmem_raddr),
-        .bmem_rdata(bmem_rdata),
-        .bmem_rvalid(bmem_rvalid)
-    );
+    //     .bmem_raddr(bmem_raddr),
+    //     .bmem_rdata(bmem_rdata),
+    //     .bmem_rvalid(bmem_rvalid)
+    // );
 
     execute execute_dec(
         // .clk(clk),
