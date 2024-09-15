@@ -214,15 +214,15 @@ always_comb
             
         end else if(state == servicing && prev_state == service_ppl_i_cache && !servicing_bmem_read) begin
 
-            bmem_addr = ooo_i_dfp_addr;
+            bmem_addr = ppl_i_dfp_addr;
             bmem_read = 1'b1;
             bmem_write = 1'b0;
 
-        end else if(state == servicing && prev_state == service_ppl_i_cache && !servicing_bmem_read) begin
+        end else if(state == servicing && prev_state == service_ppl_d_cache && !servicing_bmem_read) begin
 
-            bmem_addr  = ppl_i_dfp_addr ;
-            bmem_read  = ooo_d_dfp_read ;
-            bmem_write = ooo_d_dfp_write;
+            bmem_addr  = ppl_d_dfp_addr ;
+            bmem_read  = ppl_d_dfp_read ;
+            bmem_write = ppl_d_dfp_write;
 
         end  
 
@@ -310,7 +310,7 @@ always_comb begin : combining_data_and_sending_out_resps
             ooo_d_dfp_resp = 1'b1;
         end
 
-        if(bmem_raddr[31:5] == ppl_i_dfp_addr[31:5] && done && prev_state == service_ppl_i_cache) begin
+        if(/*bmem_raddr[31:5] == ppl_i_dfp_addr[31:5] &&*/ done && prev_state == service_ppl_i_cache) begin
             ppl_i_dfp_rdata = {bmem_rdata, chunk2, chunk1, chunk0};
             ppl_i_dfp_resp = 1'b1;
         end
@@ -330,8 +330,8 @@ always_ff @(posedge clk) begin : write_counter_logic
 
 
     if (rst) begin 
-        write_counter = '0;
-        w_done = 1'b0;
+        write_counter <= '0;
+        w_done <= 1'b0;
     end
 
     else begin
@@ -430,7 +430,7 @@ I_CACHE I_CACHE(
     .dfp_addr   (ppl_i_dfp_addr),
     .dfp_read   (ppl_i_dfp_read),
     .dfp_rdata  (ppl_i_dfp_rdata),
-    .dfp_resp   (ppl_i_dfp_resp)
+    .dfp_resp   (ppl_i_dfp_resp && bmem_raddr[31:5] == ppl_i_dfp_addr[31:5])
 );
 
 // Pipeline_dcache
