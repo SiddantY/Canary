@@ -73,7 +73,7 @@ import rv32i_types::*;
 
 
     // logic   [31:0]  imem_addr;
-    // logic           imem_read;
+    logic           imem_read;
     // logic   [31:0]  imem_rdata;
     // logic           imem_resp;
     // logic   [31:0]  imem_raddr;

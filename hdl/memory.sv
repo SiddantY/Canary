@@ -4,7 +4,7 @@ module memory(
 
     input   logic           flush,
     input   logic           jump_en,
-    input   logic           jalr_done,
+    input   logic           jalr_en,
 
     input   logic   [31:0]  ooo_imem_addr,
     input   logic           ooo_input_valid,
@@ -22,8 +22,8 @@ module memory(
 
     input   logic   [31:0]  ppl_imem_addr,
     input   logic   [3:0]   ppl_imem_rmask,
-    output  logic   [31:0]  ppl_imem_rdata
-    output  logic           ppl_imem_resp
+    output  logic   [31:0]  ppl_imem_rdata,
+    output  logic           ppl_imem_resp,
 
     input   logic   [31:0]  ppl_dmem_addr,
     input   logic   [3:0]   ppl_dmem_rmask,
@@ -42,6 +42,70 @@ module memory(
     input logic   [63:0]    bmem_rdata,
     input logic             bmem_rvalid
 );
+
+// garbage sigs
+logic in_writeBack, in_compare, in_idle;
+
+//ufp latching + etc
+logic [31:0] ooo_dmem_addr_latch, ooo_dmem_addr_use;
+logic [3:0] ooo_dmem_rmask_latch, ooo_dmem_rmask_use;
+logic [3:0] ooo_dmem_wmask_latch, ooo_dmem_wmask_use;
+logic [31:0] ooo_dmem_wdata_latch, ooo_dmem_wdata_use;
+
+logic [31:0] ooo_dmem_rdata_out;
+logic ooo_dmem_resp_out;
+
+always_ff @( posedge clk ) begin : dmem_out_regs
+
+    if(rst) begin
+        ooo_dmem_rdata <= '0;
+        ooo_dmem_resp <= '0;
+    end else begin
+        ooo_dmem_rdata <= ooo_dmem_rdata_out;
+        ooo_dmem_resp <= ooo_dmem_resp_out;
+    end
+
+end
+
+always_ff @( posedge clk ) begin : dmem_latching
+    if(rst) begin
+        ooo_dmem_addr_latch <= '0;
+        ooo_dmem_rmask_latch <= '0;
+        ooo_dmem_wmask_latch <= '0;
+        ooo_dmem_wdata_latch <= '0;
+        // cache_in_use <= 1'b0;
+    end else begin
+
+        if(((ooo_dmem_rmask | ooo_dmem_wmask) != '0)) begin
+            ooo_dmem_addr_latch <= ooo_dmem_addr;
+            ooo_dmem_rmask_latch <= ooo_dmem_rmask;
+            ooo_dmem_wmask_latch <= ooo_dmem_wmask;
+            ooo_dmem_wdata_latch <= ooo_dmem_wdata;
+        end
+
+        else if(ooo_dmem_resp_out) begin
+            ooo_dmem_addr_latch <= '0;
+            ooo_dmem_rmask_latch <= '0;
+            ooo_dmem_wmask_latch <= '0;
+            ooo_dmem_wdata_latch <= '0;
+
+        end
+    end
+end
+
+always_comb begin : dmem_sigs
+    if((ooo_dmem_rmask | ooo_dmem_wmask) != '0 && !flush) begin
+        ooo_dmem_addr_use = ooo_dmem_addr;
+        ooo_dmem_rmask_use = ooo_dmem_rmask;
+        ooo_dmem_wmask_use = ooo_dmem_wmask;
+        ooo_dmem_wdata_use = ooo_dmem_wdata;
+    end else begin
+        ooo_dmem_addr_use = ooo_dmem_addr_latch;
+        ooo_dmem_rmask_use = ooo_dmem_rmask_latch;
+        ooo_dmem_wmask_use = ooo_dmem_wmask_latch;
+        ooo_dmem_wdata_use = ooo_dmem_wdata_latch;
+    end
+end
 
 // Cache dfp signals
 logic [31:0] ooo_i_dfp_addr, ooo_d_dfp_addr, ppl_i_dfp_addr, ppl_d_dfp_addr;
@@ -62,8 +126,8 @@ logic w_done;
 logic [1:0] write_counter;
 
 //Receiving Data Signals
-logic [1:0] receive_counter <= '0;
-logic done <= '0;
+logic [1:0] receive_counter;
+logic done;
 logic [63:0] chunk0, chunk1, chunk2, chunk3;
 
 enum int unsigned {
@@ -80,12 +144,13 @@ always_ff @(posedge clk) begin : round_robin_scheduling_for_main_memory_access
     if(rst) begin
 
         state <= service_ooo_i_cache;
-        prev_state <= 'x;
+        prev_state <= service_ppl_i_cache;
 
     end else begin
 
         state <= next_state;
-        if(next_state == servicing) prev_state <= state;
+
+        if(next_state == servicing && state != servicing) prev_state <= state;
 
     end
 
@@ -111,7 +176,7 @@ always_comb begin : next_state_for_round_robin_scheduler
             else next_state = service_ooo_i_cache;
         end
         servicing : begin
-            if(done || w_done) begin
+            if(ooo_i_dfp_resp || ooo_d_dfp_resp || ppl_i_dfp_resp || ppl_d_dfp_resp) begin
                 case (prev_state)
                     service_ooo_i_cache: next_state = service_ooo_d_cache;
                     service_ooo_d_cache: next_state = service_ppl_i_cache;
@@ -126,8 +191,15 @@ always_comb begin : next_state_for_round_robin_scheduler
 
 end
 
+logic servicing_bmem_read;
+
 always_comb
     begin : setting_signals_for_bmem
+        
+        bmem_addr = '0;
+        bmem_read = '0;
+        bmem_write = '0;
+
         if(state == servicing && prev_state == service_ooo_i_cache && !servicing_bmem_read) begin
 
             bmem_addr = ooo_i_dfp_addr;
@@ -147,10 +219,13 @@ always_comb
             bmem_write = 1'b0;
 
         end else if(state == servicing && prev_state == service_ppl_i_cache && !servicing_bmem_read) begin
+
             bmem_addr  = ppl_i_dfp_addr ;
             bmem_read  = ooo_d_dfp_read ;
             bmem_write = ooo_d_dfp_write;
+
         end  
+
     end : setting_signals_for_bmem
 
 always_ff @(posedge clk) begin : make_sure_reads_only_high_one_cycle
@@ -179,6 +254,8 @@ always_ff @(posedge clk) begin : make_sure_reads_only_high_one_cycle
             if(ppl_d_dfp_read) servicing_bmem_read <= 1'b1;
 
         end
+
+        if(ooo_i_dfp_resp || ooo_d_dfp_resp || ppl_i_dfp_resp || ppl_d_dfp_resp) servicing_bmem_read <= 1'b0;
 
     end
 end
@@ -209,26 +286,47 @@ always_ff @( posedge clk ) begin : receiving_data
 
 always_comb begin : combining_data_and_sending_out_resps
         // Receiving a request
-        i_dfp_rdata = '0;
-        i_dfp_resp = 1'b0;
-        d_dfp_rdata = '0;
-        d_dfp_resp = 1'b0;
-        i_dfp_raddr = '0;
-        if(bmem_raddr[31:5] == dmem_addr_use[31:5] && done) begin
-            d_dfp_rdata = {bmem_rdata, chunk2, chunk1, chunk0};
-            d_dfp_resp = 1'b1;
-        end
-            
-        if(bmem_raddr[31:5] == i_dfp_addr[31:5] && done) begin
-            i_dfp_rdata = {bmem_rdata, chunk2, chunk1, chunk0};
-            i_dfp_raddr = bmem_raddr;
-            i_dfp_resp = 1'b1;
+        ooo_i_dfp_resp = '0;
+        ooo_i_dfp_rdata = '0;
+        ooo_i_dfp_raddr = '0;
+
+        ooo_d_dfp_resp = '0;
+        ooo_d_dfp_rdata = '0;
+
+        ppl_i_dfp_resp = '0;
+        ppl_i_dfp_rdata = '0;
+
+        ppl_d_dfp_resp = '0;
+        ppl_d_dfp_rdata = '0;
+
+        if(/*bmem_raddr[31:5] == ooo_i_dfp_addr[31:5] &&*/ done && prev_state == service_ooo_i_cache) begin
+            ooo_i_dfp_rdata = {bmem_rdata, chunk2, chunk1, chunk0};
+            ooo_i_dfp_resp = 1'b1;
+            ooo_i_dfp_raddr = bmem_raddr;
+        end 
+
+        if(bmem_raddr[31:5] == ooo_d_dfp_addr[31:5] && done && prev_state == service_ooo_d_cache) begin
+            ooo_d_dfp_rdata = {bmem_rdata, chunk2, chunk1, chunk0};
+            ooo_d_dfp_resp = 1'b1;
         end
 
-        if (w_done) d_dfp_resp = 1'b1;
+        if(bmem_raddr[31:5] == ppl_i_dfp_addr[31:5] && done && prev_state == service_ppl_i_cache) begin
+            ppl_i_dfp_rdata = {bmem_rdata, chunk2, chunk1, chunk0};
+            ppl_i_dfp_resp = 1'b1;
+        end
+
+        if(bmem_raddr[31:5] == ppl_d_dfp_addr[31:5] && done && prev_state == service_ppl_d_cache) begin
+            ppl_d_dfp_rdata = {bmem_rdata, chunk2, chunk1, chunk0};
+            ppl_d_dfp_resp = 1'b1;
+        end
+
+
+        if (w_done && prev_state == service_ooo_d_cache) ooo_d_dfp_resp = 1'b1;
+        if (w_done && prev_state == service_ppl_d_cache) ppl_d_dfp_resp = 1'b1;
+
     end
 
-always_ff @(posedge clk) begin : write_counter
+always_ff @(posedge clk) begin : write_counter_logic
 
 
     if (rst) begin 
@@ -285,7 +383,7 @@ pipe_icache #(
         .dfp_read(ooo_i_dfp_read),
         .dfp_rdata(ooo_i_dfp_rdata),
         .dfp_raddr(ooo_i_dfp_raddr),
-        .dfp_resp(ooo_i_dfp_resp)
+        .dfp_resp(ooo_i_dfp_resp && bmem_raddr[31:5] == ooo_i_dfp_addr[31:5])
     );
 
 // ooo_dcache
@@ -301,13 +399,13 @@ cache d_cache (
     .in_idle(in_idle),
 
     // cpu side signals, ufp -> upward facing port
-    .ufp_addr(ooo_dmem_addr), // SLICE LAST 2 BITS AMAAN????                  // ufp_addr[1:0] will always be '0, that is, all accesses to the cache on UFP are 32-bit aligned
-    .ufp_rmask(ooo_dmem_rmask),                  // specifies which bytes of ufp_rdata the UFP will use. You may return any byte at a position whose corresponding bit in ufp_rmask is zero. A nonzero ufp_rmask indicates a read request
-    .ufp_wmask(ooo_dmem_wmask),                  // tells the cache which bytes out of the 4 bytes in ufp_wdata are to be written. A nonzero ufp_wmask indicates a write request.
-    .ufp_rdata(ooo_dmem_rdata),
+    .ufp_addr(ooo_dmem_addr_use), // SLICE LAST 2 BITS AMAAN????                  // ufp_addr[1:0] will always be '0, that is, all accesses to the cache on UFP are 32-bit aligned
+    .ufp_rmask(ooo_dmem_rmask_use),                  // specifies which bytes of ufp_rdata the UFP will use. You may return any byte at a position whose corresponding bit in ufp_rmask is zero. A nonzero ufp_rmask indicates a read request
+    .ufp_wmask(ooo_dmem_wmask_use),                  // tells the cache which bytes out of the 4 bytes in ufp_wdata are to be written. A nonzero ufp_wmask indicates a write request.
+    .ufp_rdata(ooo_dmem_rdata_out),
     // .ufp_rdata(dmem_rdata),
-    .ufp_wdata(ooo_dmem_wdata),
-    .ufp_resp(ooo_dmem_resp),
+    .ufp_wdata(ooo_dmem_wdata_use),
+    .ufp_resp(ooo_dmem_resp_out),
     // .ufp_resp(dmem_resp),
 
     // memory side signals, dfp -> downward facing port

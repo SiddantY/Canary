@@ -31,7 +31,7 @@ logic           ooo_dmem_resp;
 logic   [31:0]  ppl_imem_addr;
 logic   [3:0]   ppl_imem_rmask;
 logic   [31:0]  ppl_imem_rdata;
-logic           ppl_imem_resp
+logic           ppl_imem_resp;
 
 logic   [31:0]  ppl_dmem_addr;
 logic   [3:0]   ppl_dmem_rmask;
@@ -40,44 +40,91 @@ logic   [31:0]  ppl_dmem_rdata;
 logic   [31:0]  ppl_dmem_wdata;
 logic           ppl_dmem_resp;
 
+logic flush, jump_en, jalr_done;
+
 ooo_cpu ooo(
     .clk            (clk),
     .rst            (rst),
 
-    .imem_addr(imem_addr),
-    .input_valid(input_valid),
-    .imem_stall(imem_stall),
-    .imem_rdata(imem_rdata),
-    .imem_raddr(imem_raddr),
-    .imem_resp(imem_resp),
+    .imem_addr(ooo_imem_addr),
+    .input_valid(ooo_input_valid),
+    .imem_stall(ooo_imem_stall),
+    .imem_rdata(ooo_imem_rdata),
+    .imem_raddr(ooo_imem_raddr),
+    .imem_resp(ooo_imem_resp),
 
-    .dmem_addr(dmem_addr),
-    .dmem_rmask(dmem_rmask),
-    .dmem_wmask(dmem_wmask),
-    .dmem_wdata(dmem_wdata),
-    .dmem_rdata(dmem_rdata),
-    .dmem_resp(dmem_resp),
+    .dmem_addr(ooo_dmem_addr),
+    .dmem_rmask(ooo_dmem_rmask),
+    .dmem_wmask(ooo_dmem_wmask),
+    .dmem_wdata(ooo_dmem_wdata),
+    .dmem_rdata(ooo_dmem_rdata),
+    .dmem_resp(ooo_dmem_resp),
 
     .flush(flush),
     .jump_en(jump_en),
-    .jalr_en(jalr_done)
+    .jalr_done(jalr_done)
 );
 
 pipeline_cpu ppl(
     .clk            (clk),
     .rst            (rst),
 
-    .imem_addr(imem_addr),
-    .imem_rmask(imem_rmask),
-    .imem_rdata(imem_rdata),
-    .imem_resp(imem_resp),
+    .imem_addr(ppl_imem_addr),
+    .imem_rmask(ppl_imem_rmask),
+    .imem_rdata(ppl_imem_rdata),
+    .imem_resp(ppl_imem_resp),
 
-    .dmem_addr(dmem_addr),
-    .dmem_rmask(dmem_rmask),
-    .dmem_wmask(dmem_wmask),
-    .dmem_rdata(dmem_rdata),
-    .dmem_wdata(dmem_wdata),
-    .dmem_resp(dmem_resp)
+    .dmem_addr(ppl_dmem_addr),
+    .dmem_rmask(ppl_dmem_rmask),
+    .dmem_wmask(ppl_dmem_wmask),
+    .dmem_rdata(ppl_dmem_rdata),
+    .dmem_wdata(ppl_dmem_wdata),
+    .dmem_resp(ppl_dmem_resp)
+);
+
+memory memory_unit(
+    .clk(clk),
+    .rst(rst),
+
+    .flush(flush),
+    .jump_en(jump_en),
+    .jalr_en(jalr_done),
+
+    .ooo_imem_addr(ooo_imem_addr),
+    .ooo_input_valid(ooo_input_valid),
+    .ooo_imem_rdata(ooo_imem_rdata),
+    .ooo_imem_resp(ooo_imem_resp),
+    .ooo_imem_raddr(ooo_imem_raddr),
+    .ooo_imem_stall(ooo_imem_stall),
+
+    .ooo_dmem_addr(ooo_dmem_addr),
+    .ooo_dmem_rmask(ooo_dmem_rmask),
+    .ooo_dmem_wmask(ooo_dmem_wmask),
+    .ooo_dmem_rdata(ooo_dmem_rdata),
+    .ooo_dmem_wdata(ooo_dmem_wdata),
+    .ooo_dmem_resp(ooo_dmem_resp),
+
+    .ppl_imem_addr(ppl_imem_addr),
+    .ppl_imem_rmask('0),
+    .ppl_imem_rdata(ppl_imem_rdata),
+    .ppl_imem_resp(ppl_imem_resp),
+
+    .ppl_dmem_addr(ppl_dmem_addr),
+    .ppl_dmem_rmask('0),
+    .ppl_dmem_wmask('0),
+    .ppl_dmem_rdata(ppl_dmem_rdata),
+    .ppl_dmem_wdata(ppl_dmem_wdata),
+    .ppl_dmem_resp(ppl_dmem_resp),
+
+    .bmem_addr(bmem_addr),
+    .bmem_read(bmem_read),
+    .bmem_write(bmem_write),
+    .bmem_wdata(bmem_wdata),
+    
+    .bmem_ready(bmem_ready),
+    .bmem_raddr(bmem_raddr),
+    .bmem_rdata(bmem_rdata),
+    .bmem_rvalid(bmem_rvalid)
 );
 
 endmodule
