@@ -240,7 +240,7 @@ module monitor (
         $fclose(time_fd);
     end
 
-    riscv_formal_monitor_rv32imc monitor(
+    riscv_formal_monitor_rv32imc ooo_monitor(
         .clock              (itf.clk),
         .reset              (itf.rst),
         .rvfi_valid         (rvfi_valid),
@@ -268,7 +268,7 @@ module monitor (
     );
 
     int spike_fd;
-    initial spike_fd = $fopen("./commit.log", "w");
+    initial spike_fd = $fopen("./commit.log", "a");
     final $fclose(spike_fd);
 
     always @ (posedge itf.clk iff !itf.rst) begin

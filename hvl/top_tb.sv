@@ -24,8 +24,11 @@ module top_tb;
     banked_mem_itf bmem_itf(.*);
     banked_memory banked_memory(.itf(bmem_itf));
 
-    mon_itf mon_itf(.*);
-    monitor monitor(.itf(mon_itf));
+    mon_itf ooo_mon_itf(.*);
+    monitor ooo_monitor(.itf(ooo_mon_itf));
+
+    mon_itf pipeline_mon_itf(.*);
+    monitor pipeline_monitor(.itf(pipeline_mon_itf));
 
     // pipeline_cpu dut(
     //     .clk            (clk),
@@ -123,7 +126,7 @@ module top_tb;
 
     always @(posedge clk) begin
         for (int unsigned i=0; i < 8; ++i) begin
-            if (mon_itf.halt[i]) begin
+            if (pipeline_mon_itf.halt[i]) begin
                 $finish;
             end
         end
@@ -131,7 +134,7 @@ module top_tb;
             $error("TB Error: Timed out");
             $finish;
         end
-        if (mon_itf.error != 0) begin
+        if (ooo_mon_itf.error != 0 | pipeline_mon_itf.error != 0) begin
             repeat (5) @(posedge clk);
             $finish;
         end

@@ -20,15 +20,18 @@ sim/top_tb: $(SRCS) $(HDRS)
 	cd sim && vcs $(SRCS) $(VCS_FLAGS) -msg_config=../vcs_warn.config -l compile.log -top top_tb -o top_tb
 	bash check_compile_error.sh
 
+
 .PHONY: run_top_tb
-run_top_tb: sim/top_tb $(PROG)
+run_top_tb: sim/top_tb $(PROG) $(PROG1)
 	../bin/generate_memory_file.sh $(PROG)
+	../bin/generate_pipeline_memory_file.sh $(PROG1)
 	rm -f sim/dump.fsdb
 	python3 ../synth/get_clock.py
 	python3 get_bmem_x.py
 	export ECE411_CLOCK_PERIOD_PS=$(shell python3 ../synth/get_clock.py) ;\
 	export ECE411_BRAM_0_ON_X=$(shell python3 get_bmem_x.py) ;\
 	export ECE411_MEMLST=$(PWD)/sim/memory ;\
+	export ECE411_MEMLST_PIPE=$(PWD)/sim/memory_pipeline ;\
 	cd sim && ./top_tb -l simulation.log
 	bash check_sim_error.sh
 

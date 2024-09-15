@@ -47,18 +47,18 @@ ooo_cpu ooo(
     .rst            (rst),
 
     .imem_addr(ooo_imem_addr),
-    .input_valid('0),
+    .input_valid(ooo_input_valid),
     .imem_stall(ooo_imem_stall),
     .imem_rdata(ooo_imem_rdata),
     .imem_raddr(ooo_imem_raddr),
-    .imem_resp('0),
+    .imem_resp(ooo_imem_resp),
 
     .dmem_addr(ooo_dmem_addr),
-    .dmem_rmask('0),
-    .dmem_wmask('0),
+    .dmem_rmask(ooo_dmem_rmask),
+    .dmem_wmask(ooo_dmem_wmask),
     .dmem_wdata(ooo_dmem_wdata),
     .dmem_rdata(ooo_dmem_rdata),
-    .dmem_resp('0),
+    .dmem_resp(ooo_dmem_resp),
 
     .flush(flush),
     .jump_en(jump_en),
