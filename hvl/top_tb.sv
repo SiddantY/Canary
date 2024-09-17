@@ -124,9 +124,10 @@ module top_tb;
         rst <= 1'b0;
     end
 
+
     always @(posedge clk) begin
         for (int unsigned i=0; i < 8; ++i) begin
-            if (pipeline_mon_itf.halt[i]) begin
+            if (ooo_mon_itf.halt[i] && pipeline_mon_itf.halt[i]) begin
                 $finish;
             end
         end

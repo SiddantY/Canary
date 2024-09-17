@@ -22,9 +22,9 @@ sim/top_tb: $(SRCS) $(HDRS)
 
 
 .PHONY: run_top_tb
-run_top_tb: sim/top_tb $(PROG) $(PROG1)
-	../bin/generate_memory_file.sh $(PROG)
-	../bin/generate_pipeline_memory_file.sh $(PROG1)
+run_top_tb: sim/top_tb $(OOO_PROG) $(PPL_PROG)
+	../bin/generate_memory_file.sh $(OOO_PROG)
+	../bin/generate_pipeline_memory_file.sh $(PPL_PROG)
 	rm -f sim/dump.fsdb
 	python3 ../synth/get_clock.py
 	python3 get_bmem_x.py
