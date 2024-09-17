@@ -34,13 +34,15 @@ module snoopbus (
     input   logic           ppl_d_bus_query,
 
     output  logic           bus_ready,
-    output  logic           bus_resp,  
+    output  logic   [1:0]   bus_resp,  // 0 is no resp, 1 is hit 2 is miss   
 );
 
 enum int unsigned {
     bus_free,
     bus_serving_ooo_d,
+    bus_serving_ooo_d_response,
     bus_serving_ppl_d
+    bus_serving_ppl_d_respnose
 } bus_state, bus_next_state;
 
 always_ff @(posedge clk) begin : bus_state_machine
@@ -65,17 +67,100 @@ always_comb begin : bus_state_next
         end
 
         bus_serving_ooo_d : begin
-            if(bus_resp) bus_next_state = bus_free;
-            else bus_next_state = bus_serving_ooo_d;
+            bus_next_state = bus_serving_ooo_d_response;
+        end
+
+        bus_serving_ooo_d_response : begin
+            bus_next_state = ppl_d_bus_query ? bus_serving_ppl_d : bus_free;
         end
 
         bus_serving_ppl_d : begin
-            if(bus_resp) bus_next_state = bus_free;
-            else bus_next_state = bus_serving_ppl_d;
+            bus_next_state = bus_serving_ppl_d_response;
+        end
+
+        bus_serving_ooo_d_response : begin
+            bus_next_state = ooo_d_bus_query ? bus_serving_ooo_d : bus_free;
         end
 
     endcase
 end : bus_state_next
+
+always_comb begin : bus_outgoing_signals
+
+    bus_resp = '0;
+    bus_ready = '0;
+
+    if(state == bus_free) bus_ready = 1'b1;
+
+    if((state == bus_serving_ooo_d || state == bus_serving_ppl_d)) bus_resp = 1'b1;
+
+    if(state == bus_serving_ooo_d) begin
+        ppl_d_set_index = ooo_d_addr[8:5];
+    end
+
+    if(state == bus_serving_ooo_d_response) begin
+        // Hit Logic
+        
+        // Operations
+        case(ooo_d_operation)
+            2'b00: begin // Pr Read
+                if(ppl_d_cache_hit) begin
+                    bus_resp = 2'b01; // hit
+                    case (ppl_d_data_in[ppl_d_way_index][25:24])
+                        2'b00: bus_resp = 2'b10;    // I :  Bus Resp is 'Miss'
+                        2'b01: begin            // S :  Bus Resp is 'Hit'
+                            
+                        end // @TODO im going to grainger ill push you can work ?
+                        2'b10: // E                 
+                        2'b11: // M
+                    endcase
+                end else begin
+                    bus_resp = 2'b10; // miss
+                end
+            end
+            2'b01: begin
+            end // Pr Wr
+            2'b10: begin
+            end // Bus Read
+            2'b11 begin
+            end // Bus ReadX
+        endcase
+    end
+
+end
+
+logic ppl_d_cache_hit;
+logic [3:0] ppl_d_way_hit;
+logic [1:0] ppl_d_way_index;
+
+always_comb begin : cache_hit_logic
+
+    ppl_d_way_hit[0] = (ppl_d_tag_in[0][22:0] == ooo_d_addr[31:9]) && ppl_d_data_in[0][25:24] > 2'b00;
+    ppl_d_way_hit[1] = (ppl_d_tag_in[1][22:0] == ooo_d_addr[31:9]) && ppl_d_data_in[1][25:24] > 2'b00;
+    ppl_d_way_hit[2] = (ppl_d_tag_in[2][22:0] == ooo_d_addr[31:9]) && ppl_d_data_in[2][25:24] > 2'b00;
+    ppl_d_way_hit[3] = (ppl_d_tag_in[3][22:0] == ooo_d_addr[31:9]) && ppl_d_data_in[3][25:24] > 2'b00;
+    
+    ppl_d_cache_hit = ppl_d_way_hit[0] | ppl_d_way_hit[1] | ppl_d_way_hit[2] | ppl_d_way_hit[3];
+
+    if (ppl_d_way_hit[0] == 1'b1)      ppl_d_way_index = 2'b00;
+    else if (ppl_d_way_hit[2] == 1'b1) ppl_d_way_index = 2'b10;
+    else if (ppl_d_way_hit[1] == 1'b1) ppl_d_way_index = 2'b01;
+    else if (ppl_d_way_hit[3] == 1'b1) ppl_d_way_index = 2'b11;
+
+end
+
+
+
+
+// ff_array #(.WIDTH(3)) lru_array (
+//         .clk0       (clk),
+//         .rst0       (rst),
+//         .csb0       (1'b0),
+//         .web0       (!load_lru),
+//         .addr0      (set_index),
+//         .din0       (lru_in),
+//         .dout0      (lru_out)
+//     );
 
 
 endmodule
