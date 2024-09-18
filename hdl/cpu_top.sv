@@ -127,4 +127,22 @@ memory memory_unit(
     .bmem_rvalid(bmem_rvalid)
 );
 
+
+fpga_mem_controller fpga_mem_controller(
+    .clk(clk),
+    .rst(rst),
+    // Takes in signals from memory unit
+    .bmem_addr(bmem_addr),
+    .bmem_read(bmem_read),
+    .bmem_write(bmem_write),
+    .bmem_wdata(bmem_wdata),
+
+    // Sends signals back to the memory unit
+    .bmem_ready(bmem_ready),
+    .bmem_raddr(bmem_raddr),
+    .bmem_rdata(bmem_rdata),
+    .bmem_rvalid(bmem_rvalid)
+);
+
+
 endmodule
