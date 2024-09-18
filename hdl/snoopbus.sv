@@ -2,39 +2,60 @@ module snoopbus (
     input   logic           clk,
     input   logic           rst,
 
-    output  logic           ooo_d_write_en[4],
-    output  logic   [31:0]  ooo_d_cache_wmask,
-    input   logic   [255:0] ooo_d_data_in[4],
-    output  logic   [255:0] ooo_d_data_out[4],
+    // output  logic           ooo_d_write_en[4],
+    // output  logic   [31:0]  ooo_d_cache_wmask,
+    // input   logic   [255:0] ooo_d_data_in[4],
+    // output  logic   [255:0] ooo_d_data_out[4],
 
-    input   logic   [31:0]  ooo_d_addr,
-    output  logic   [3:0]   ooo_d_set_index,
+    // input   logic   [31:0]  ooo_d_addr,
+    // output  logic   [3:0]   ooo_d_set_index,
 
-    output  logic           ooo_d_tag_we[4],
-    input   logic   [23:0]  ooo_d_tag_in[4],
-    output  logic   [23:0]  ooo_d_tag_out[4],
+    // output  logic           ooo_d_tag_we[4],
+    // input   logic   [23:0]  ooo_d_tag_in[4],
+    // output  logic   [23:0]  ooo_d_tag_out[4],
 
-    input   logic   [1:0]   ooo_d_operation,
+    // input   logic   [1:0]   ooo_d_operation,
 
-    output  logic           ppl_d_write_en[4],
-    output  logic   [31:0]  ppl_d_cache_wmask,
-    input   logic   [255:0] ppl_d_data_in[4],
-    output  logic   [255:0] ppl_d_data_out[4],
+    // output  logic           ppl_d_write_en[4],
+    // output  logic   [31:0]  ppl_d_cache_wmask,
+    // input   logic   [255:0] ppl_d_data_in[4],
+    // output  logic   [255:0] ppl_d_data_out[4],
 
-    input   logic   [31:0]  ppl_d_addr,
-    output  logic   [3:0]   ppl_d_set_index,
+    // input   logic   [31:0]  ppl_d_addr,
+    // output  logic   [3:0]   ppl_d_set_index,
 
-    input   logic   [1:0]   ppl_d_operation,
+    // input   logic   [1:0]   ppl_d_operation,
 
-    output  logic           ppl_d_tag_we[4],
-    input   logic   [23:0]  ppl_d_tag_in[4],
-    output  logic   [23:0]  ppl_d_tag_out[4] 
+    // output  logic           ppl_d_tag_we[4],
+    // input   logic   [23:0]  ppl_d_tag_in[4],
+    // output  logic   [23:0]  ppl_d_tag_out[4] 
+
+    // input   logic           ooo_d_bus_query,
+    // input   logic           ppl_d_bus_query,
+
+    input   logic   [31:0]  ooo_d_address,
+    input   logic   [1:0]   ooo_d_command,
+    input   logic   [255:0] ooo_d_data,
 
     input   logic           ooo_d_bus_query,
+
+    input   logic   [31:0]  ppl_d_address,
+    input   logic   [1:0]   ppl_d_command,
+    input   logic   [255:0] ppl_d_data,
+
     input   logic           ppl_d_bus_query,
 
+    output  logic   [31:0]  bus_command_address,
+    output  logic   [1:0]   bus_command_command,
+    output  logic   [255:0] bus_command_data,
+
+    input   logic   [31:0]  bus_resp_address,
+    input   logic   [1:0]   bus_resp_command,
+    input   logic   [255:0] bus_resp_data,
+    input   logic           bus_resp_hit,
+
     output  logic           bus_ready,
-    output  logic   [1:0]   bus_resp,  // 0 is no resp, 1 is hit 2 is miss   
+    output  logic   [1:0]   bus_resp  // 0 is no resp, 1 is hit 2 is miss   
 );
 
 enum int unsigned {
@@ -71,7 +92,7 @@ always_comb begin : bus_state_next
         end
 
         bus_serving_ooo_d_response : begin
-            bus_next_state = ppl_d_bus_query ? bus_serving_ppl_d : bus_free;
+            bus_next_state = bus_free;
         end
 
         bus_serving_ppl_d : begin
@@ -79,7 +100,7 @@ always_comb begin : bus_state_next
         end
 
         bus_serving_ooo_d_response : begin
-            bus_next_state = ooo_d_bus_query ? bus_serving_ooo_d : bus_free;
+            bus_next_state = bus_free;
         end
 
     endcase
@@ -92,40 +113,64 @@ always_comb begin : bus_outgoing_signals
 
     if(state == bus_free) bus_ready = 1'b1;
 
-    if((state == bus_serving_ooo_d || state == bus_serving_ppl_d)) bus_resp = 1'b1;
-
     if(state == bus_serving_ooo_d) begin
-        ppl_d_set_index = ooo_d_addr[8:5];
+        bus_command_address = ooo_d_addr;
+        bus_command_command = ooo_d_command;
     end
 
     if(state == bus_serving_ooo_d_response) begin
-        // Hit Logic
-        
-        // Operations
-        case(ooo_d_operation)
-            2'b00: begin // Pr Read
-                if(ppl_d_cache_hit) begin
-                    bus_resp = 2'b01; // hit
-                    case (ppl_d_data_in[ppl_d_way_index][25:24])
-                        2'b00: bus_resp = 2'b10;    // I :  Bus Resp is 'Miss'
-                        2'b01: begin            // S :  Bus Resp is 'Hit'
-                            
-                        end // @TODO im going to grainger ill push you can work ?
-                        2'b10: // E                 
-                        2'b11: // M
-                    endcase
-                end else begin
-                    bus_resp = 2'b10; // miss
-                end
-            end
-            2'b01: begin
-            end // Pr Wr
-            2'b10: begin
-            end // Bus Read
-            2'b11 begin
-            end // Bus ReadX
-        endcase
+        bus_command_address = ooo_d_addr;
+        bus_command_command = ooo_d_command;
+        bus_command_data = bus_resp_hit ? bus_resp_data : '0;
+        bus_resp = bus_resp_hit ? 2'b01 : 2'b10;
     end
+
+    if(state == bus_serving_ppl_d) begin
+        bus_command_address = ppl_d_addr;
+        bus_command_command = ppl_d_command;
+    end
+
+    if(state == bus_serving_ppl_d_response) begin
+        bus_command_address = ppl_d_addr;
+        bus_command_command = ppl_d_command;
+        bus_command_data = bus_resp_hit ? bus_resp_data : '0;
+        bus_resp = bus_resp_hit ? 2'b01 : 2'b10;
+    end
+
+    // if(state == bus_serving_ooo_d_response) begin
+    //     // Hit Logic
+        
+    //     // Operations
+    //     case(ooo_d_operation)
+    //         2'b00: begin // Pr Read
+    //             if(ppl_d_cache_hit) begin
+    //                 bus_resp = 2'b01; // hit
+    //                 case (ppl_d_data_in[ppl_d_way_index][25:24])
+    //                     2'b00: bus_resp = 2'b10;    // I :  Bus Resp is 'Miss'
+    //                     2'b01: begin                // S :  Pull Data
+    //                         ooo_d_data_in[@way_index] = ppl_d_data_out[ppl_d_way_index];
+    //                         ooo_d_write_en[@way_index] = 1'b1;
+
+    //                         ooo_d_tag_in[@way_index][25:24] = 2'b01;
+    //                         ooo_d_tag_we[@way_index];
+    //                     end
+    //                     2'b10: begin            
+                                
+    //                     end                    
+    //                     2'b11: // M
+    //                 endcase
+    //             end else begin
+    //                 bus_resp = 2'b10; // miss
+    //             end
+    //         end
+    //         2'b01: begin
+    //         end // Pr Wr
+    //         2'b10: begin
+    //         end // Bus Read
+    //         2'b11 begin
+    //         end // Bus ReadX
+    //     endcase
+    // end
 
 end
 
