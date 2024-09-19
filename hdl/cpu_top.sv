@@ -10,7 +10,23 @@ module cpu_top(
     input logic               bmem_ready,
     input logic   [31:0]      bmem_raddr,
     input logic   [63:0]      bmem_rdata,
-    input logic               bmem_rvalid
+    input logic               bmem_rvalid,
+
+    // Memory -> Controller
+    input logic [31:0] address_data_bus_m_to_c,
+    input logic address_on_m_to_c,
+    input logic data_on_m_to_c,
+    input logic read_en_m_to_c,
+    input logic write_en_m_to_c,
+    input logic resp_m_to_c,
+
+    // Controller -> Memory
+    output logic [31:0] address_data_bus_c_to_m,
+    output logic address_on_c_to_m,
+    output logic data_on_c_to_m,
+    output logic read_en_c_to_m,
+    output logic write_en_c_to_m,
+    output logic resp_c_to_m
 );
 
 logic   [31:0]  ooo_imem_addr;
@@ -131,18 +147,34 @@ memory memory_unit(
 fpga_mem_controller fpga_mem_controller(
     .clk(clk),
     .rst(rst),
-    // Takes in signals from memory unit
-    .bmem_addr(bmem_addr),
-    .bmem_read(bmem_read),
-    .bmem_write(bmem_write),
-    .bmem_wdata(bmem_wdata),
 
-    // Sends signals back to the memory unit
-    .bmem_ready(bmem_ready),
-    .bmem_raddr(bmem_raddr),
-    .bmem_rdata(bmem_rdata),
-    .bmem_rvalid(bmem_rvalid)
+    // Caches -> Controller
+    // .bmem_addr(bmem_addr),
+    // .bmem_read(bmem_read),
+    // .bmem_write(bmem_write),
+    // .bmem_wdata(bmem_wdata),
+
+    // // Controller -> Caches
+    // .bmem_ready(bmem_ready),
+    // .bmem_raddr(bmem_raddr),
+    // .bmem_rdata(bmem_rdata),
+    // .bmem_rvalid(bmem_rvalid),
+
+    // Memory -> Controller
+    .address_data_bus_m_to_c(address_data_bus_m_to_c),
+    .address_on_m_to_c(address_on_m_to_c),
+    .data_on_m_to_c(data_on_m_to_c),
+    .read_en_m_to_c(read_en_m_to_c),
+    .write_en_m_to_c(write_en_m_to_c),
+    .resp_m_to_c(resp_m_to_c),
+
+    // Controller -> Memory
+    .address_data_bus_c_to_m(address_data_bus_c_to_m),
+    .address_on_c_to_m(address_on_c_to_m),
+    .data_on_c_to_m(data_on_c_to_m),
+    .read_en_c_to_m(read_en_c_to_m),
+    .write_en_c_to_m(write_en_c_to_m),
+    .resp_c_to_m(resp_c_to_m)
 );
-
 
 endmodule

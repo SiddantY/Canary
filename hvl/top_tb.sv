@@ -30,6 +30,22 @@ module top_tb;
     mon_itf pipeline_mon_itf(.*);
     monitor pipeline_monitor(.itf(pipeline_mon_itf));
 
+    // Memory -> Controller
+    logic [31:0] address_data_bus_m_to_c;
+    logic address_on_m_to_c;
+    logic data_on_m_to_c;
+    logic read_en_m_to_c;
+    logic write_en_m_to_c;
+    logic resp_m_to_c;
+
+    // Controller -> Memory
+    logic [31:0] address_data_bus_c_to_m;
+    logic address_on_c_to_m;
+    logic data_on_c_to_m;
+    logic read_en_c_to_m;
+    logic write_en_c_to_m;
+    logic resp_c_to_m;
+
     // pipeline_cpu dut(
     //     .clk            (clk),
     //     .rst            (rst),
@@ -111,7 +127,24 @@ module top_tb;
         .bmem_ready(bmem_itf.ready),
         .bmem_raddr(bmem_itf.raddr),
         .bmem_rdata(bmem_itf.rdata),
-        .bmem_rvalid(bmem_itf.rvalid)
+        .bmem_rvalid(bmem_itf.rvalid),
+
+        // Memory -> Controller
+        .address_data_bus_m_to_c(address_data_bus_m_to_c),
+        .address_on_m_to_c(address_on_m_to_c),
+        .data_on_m_to_c(data_on_m_to_c),
+        .read_en_m_to_c(read_en_m_to_c),
+        .write_en_m_to_c(write_en_m_to_c),
+        .resp_m_to_c(resp_m_to_c),
+
+        // Controller -> Memory
+        .address_data_bus_c_to_m(address_data_bus_c_to_m),
+        .address_on_c_to_m(address_on_c_to_m),
+        .data_on_c_to_m(data_on_c_to_m),
+        .read_en_c_to_m(read_en_c_to_m),
+        .write_en_c_to_m(write_en_c_to_m),
+        .resp_c_to_m(resp_c_to_m)
+
     );
 
     `include "../../hvl/rvfi_reference.svh"
