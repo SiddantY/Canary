@@ -13,7 +13,7 @@ module cpu_top(
     input logic               bmem_rvalid,
 
     // Memory -> Controller
-    input logic [31:0] address_data_bus_m_to_c,
+    input logic [63:0] address_data_bus_m_to_c,
     input logic address_on_m_to_c,
     input logic data_on_m_to_c,
     input logic read_en_m_to_c,
@@ -21,7 +21,7 @@ module cpu_top(
     input logic resp_m_to_c,
 
     // Controller -> Memory
-    output logic [31:0] address_data_bus_c_to_m,
+    output logic [63:0] address_data_bus_c_to_m,
     output logic address_on_c_to_m,
     output logic data_on_c_to_m,
     output logic read_en_c_to_m,

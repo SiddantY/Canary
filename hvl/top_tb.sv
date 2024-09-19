@@ -24,19 +24,16 @@ module top_tb;
     banked_mem_itf bmem_itf(.*);
     banked_memory banked_memory(.itf(bmem_itf));
 
+    // FPGA BRAM
+    fpga_bram_itf fpga_bram_itf(.*);
+    fpga_bram fpga_bram(.itf(fpga_bram_itf));
+
     mon_itf ooo_mon_itf(.*);
     monitor ooo_monitor(.itf(ooo_mon_itf));
 
     mon_itf pipeline_mon_itf(.*);
     monitor pipeline_monitor(.itf(pipeline_mon_itf));
 
-    // Memory -> Controller
-    logic [31:0] address_data_bus_m_to_c;
-    logic address_on_m_to_c;
-    logic data_on_m_to_c;
-    logic read_en_m_to_c;
-    logic write_en_m_to_c;
-    logic resp_m_to_c;
 
     // Controller -> Memory
     logic [31:0] address_data_bus_c_to_m;
@@ -130,19 +127,21 @@ module top_tb;
         .bmem_rvalid(bmem_itf.rvalid),
 
         // Memory -> Controller
-        .address_data_bus_m_to_c(address_data_bus_m_to_c),
-        .address_on_m_to_c(address_on_m_to_c),
-        .data_on_m_to_c(data_on_m_to_c),
-        .read_en_m_to_c(read_en_m_to_c),
-        .write_en_m_to_c(write_en_m_to_c),
-        .resp_m_to_c(resp_m_to_c),
+        .address_data_bus_m_to_c(fpga_bram_itf.douta),
+        .address_on_m_to_c(1'b0), // Memory should not send addresses
+        .data_on_m_to_c(1'b1), // Memory only sends data
+        .read_en_m_to_c(1'b0),
+        .write_en_m_to_c(1'b0),
+        .resp_m_to_c(1'b0),
+
+        
 
         // Controller -> Memory
-        .address_data_bus_c_to_m(address_data_bus_c_to_m),
-        .address_on_c_to_m(address_on_c_to_m),
+        .address_data_bus_c_to_m({32{1'b0},fpga_bram_itf.addra[31:0]}),
+        .address_on_c_to_m(fpga_bram_itf.ena),
         .data_on_c_to_m(data_on_c_to_m),
         .read_en_c_to_m(read_en_c_to_m),
-        .write_en_c_to_m(write_en_c_to_m),
+        .write_en_c_to_m(fpga_bram_itf.wea),
         .resp_c_to_m(resp_c_to_m)
 
     );
@@ -180,7 +179,7 @@ module top_tb;
         //     repeat (5) @(posedge clk);
         //     $finish;
         // end
-        if (bmem_itf.error != 0) begin
+        if (fpga_bram_itf.error != 0) begin
             repeat (5) @(posedge clk);
             $finish;
         end
