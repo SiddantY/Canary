@@ -158,7 +158,9 @@ end : round_robin_scheduling_for_main_memory_access
 
 always_comb begin : next_state_for_round_robin_scheduler
 
-    case (state)
+    next_state = servicing;
+    
+    unique case (state)
         service_ooo_i_cache : begin
             if(ooo_i_dfp_read) next_state = servicing;
             else next_state = service_ooo_d_cache;
@@ -187,6 +189,8 @@ always_comb begin : next_state_for_round_robin_scheduler
                 next_state = servicing;
             end
         end
+
+        default: next_state = servicing;
     endcase
 
 end

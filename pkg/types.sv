@@ -66,6 +66,23 @@ package rv32i_types;
         alu_and = 3'b111
     } alu_ops;
 
+    typedef enum bit [1:0] {
+        mesi_i = 2'b00,
+        mesi_s = 2'b01,
+        mesi_e = 2'b10,
+        mesi_m = 2'b11
+    } mesi_states_t;
+
+    typedef enum bit [2:0] {
+        no_op = 3'b000,
+        pr_rd = 3'b001,
+        pr_wr = 3'b010,
+        bus_rd = 3'b011,
+        bus_write = 3'b100,
+        bus_upgrade = 3'b101,
+        flush = 3'b110
+    } bus_operation_t;
+
     // rvfi struct
 
     typedef struct packed {
