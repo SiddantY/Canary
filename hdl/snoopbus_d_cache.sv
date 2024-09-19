@@ -407,11 +407,8 @@ always_comb begin : cache_hit_logic_bus_port
 
 
             end
-
         end
-
     end
-
 end
 
 generate for (genvar i = 0; i < 4; i++) begin : arrays

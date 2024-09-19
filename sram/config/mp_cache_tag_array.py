@@ -1,6 +1,6 @@
 tech_name = "freepdk45"
 
-num_rw_ports = 1
+num_rw_ports = 2
 num_r_ports = 0
 num_w_ports = 0
 
