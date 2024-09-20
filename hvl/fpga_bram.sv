@@ -22,6 +22,45 @@ module fpga_bram #(
         reset();
     end
 
+    typedef enum logic {  
+        idle,
+        service_read,
+        service_write
+    } state, next_state;
+
+    always_ff @(posedge itf.clk) begin
+        if(itf.rst) begin
+            state <= idle;
+        end else begin
+            state <= next_state;
+        end 
+    end
+
+    always_comb begin
+        unique case(state)
+            idle: begin
+                if(itf.read_en_i) begin
+                    next_state = service_read;
+                end else if(itf.write_en_i) begin
+                    next_state = service_write;
+                end else begin
+                    next_state = state;
+                end
+            end
+            service_read: begin
+                if(resp_o) begin
+                    next_state = idle;
+                end
+            end
+            service_write: begin
+                if(resp_o) begin
+                    next_state = idle;
+                end
+            end
+            default: next_state = state;
+        endcase
+    end
+
     always_ff @(posedge itf.clk) begin
         if(itf.ena) begin
             if(itf.wea) begin
