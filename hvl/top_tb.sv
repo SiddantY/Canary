@@ -28,7 +28,7 @@ module top_tb;
     monitor ooo_monitor(.itf(ooo_mon_itf));
 
     mon_itf pipeline_mon_itf(.*);
-    monitor pipeline_monitor(.itf(pipeline_mon_itf));
+    monitor1 pipeline_monitor(.itf(pipeline_mon_itf));
 
     // pipeline_cpu dut(
     //     .clk            (clk),

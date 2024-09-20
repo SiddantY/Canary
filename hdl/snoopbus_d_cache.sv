@@ -73,12 +73,12 @@ logic [31: 0] cache_wmask1;
 
 // Tag Array Signals
 logic         t_write_en [4];
-logic [23 :0] tag_in     [4];
-logic [23: 0] tag_out    [4];
+logic [25 :0] tag_in     [4];
+logic [25: 0] tag_out    [4];
 
 logic         t_write_en1 [4];
-logic [23 :0] tag_in1     [4];
-logic [23: 0] tag_out1    [4];
+logic [25 :0] tag_in1     [4];
+logic [25 :0] tag_out1    [4];
 
 // Valid Array Signals
 logic         v_write_en [4];
@@ -188,6 +188,17 @@ always_comb begin : next_state_logic
     end    
 end
 
+logic [1:0] lol0;
+logic [1:0] lol1;
+logic [1:0] lol2;
+logic [1:0] lol3;
+
+assign lol0 = tag_out[0][25:24];
+assign lol1 = tag_out[1][25:24];
+assign lol2 = tag_out[2][25:24];
+assign lol3 = tag_out[3][25:24];
+
+
 logic [31:9] tag;
 logic [8:5]  set_index;
 logic [4:0]  offset;
@@ -221,6 +232,7 @@ always_comb begin : LRU_Decode
 end
 
 always_comb begin : state_signals
+    bus_command_data = '0;
 
     // Set Defaults:
     t_write_en [0] = 1'b0; 
@@ -279,6 +291,11 @@ always_comb begin : state_signals
 
     // snoopers stuff
     mask_ufp_resp = 1'b0;
+
+    snoop_bus_query = 1'b0;
+
+    bus_command_address = '0;
+    bus_command_command = '0;
 
     case (state)
 
@@ -358,7 +375,7 @@ always_comb begin : state_signals
 
         bus_read : begin
             bus_command_address = ufp_addr;
-            bus_command_command = bus_read;
+            bus_command_command = bus_rd;
             // bus_command_data = 'x;                                                                                                                                                                         
         end
 
@@ -374,6 +391,19 @@ always_comb begin : state_signals
         end
     endcase
 
+    if(rst) begin
+        tag_in[0] = '0;
+        tag_in[1] = '0;
+        tag_in[2] = '0;
+        tag_in[3] = '0;
+
+        t_write_en[0] = 1'b1;
+        t_write_en[1] = 1'b1;
+        t_write_en[2] = 1'b1;
+        t_write_en[3] = 1'b1;
+
+    end
+
 end
 
 // logic bus_cache_hit;
@@ -381,12 +411,24 @@ logic [3:0] bus_way_hit;
 logic [1:0] bus_way_index;
 
 always_comb begin : cache_hit_logic_bus_port
-    bus_way_hit[0] = (tag_out1[0][22:0] == bus_incomming_command_address[31:9]);
-    bus_way_hit[1] = (tag_out1[1][22:0] == bus_incomming_command_address[31:9]);
-    bus_way_hit[2] = (tag_out1[2][22:0] == bus_incomming_command_address[31:9]);
-    bus_way_hit[3] = (tag_out1[3][22:0] == bus_incomming_command_address[31:9]);
+    tag_in1[0] = '0;
+    tag_in1[1] = '0;
+    tag_in1[2] = '0;
+    tag_in1[3] = '0;
 
-    bus_cache_hit = bus_way_hit[0] | bus_way_hit[1] | bus_way_hit[2] | bus_way_hit[3];
+    bus_data_out = '0;
+    
+    data_in1[0] = '0; 
+    data_in1[1] = '0;
+    data_in1[2] = '0;
+    data_in1[3] = '0;
+
+    bus_way_hit[0] = (tag_out1[0][22:0] == bus_incomming_command_address[31:9]) == 1'b1 ? 1'b1 : 1'b0;
+    bus_way_hit[1] = (tag_out1[1][22:0] == bus_incomming_command_address[31:9]) == 1'b1 ? 1'b1 : 1'b0;
+    bus_way_hit[2] = (tag_out1[2][22:0] == bus_incomming_command_address[31:9]) == 1'b1 ? 1'b1 : 1'b0;
+    bus_way_hit[3] = (tag_out1[3][22:0] == bus_incomming_command_address[31:9]) == 1'b1 ? 1'b1 : 1'b0;
+
+    bus_cache_hit = bus_command_address != '0 ? bus_way_hit[0] | bus_way_hit[1] | bus_way_hit[2] | bus_way_hit[3] : 1'b0;
 
     if (bus_way_hit[0] == 1'b1)      bus_way_index = 2'b00;
     else if (bus_way_hit[2] == 1'b1) bus_way_index = 2'b10;
