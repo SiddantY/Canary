@@ -7,6 +7,12 @@ module fpga_bram #(
 );
 
     logic [DATA_WIDTH-1:0] internal_memory_array [logic [(2**ADDRESS_WIDTH)-1:0]];
+    logic [DATA_WIDTH-1:0] dina;
+    logic [ADDRESS_WIDTH-1:0] addra;
+    logic store_address;
+    logic clear_address;
+    logic store_data;
+    logic clear_data;
 
     task automatic reset();
         automatic string memfile = {getenv("ECE411_MEMLST"), "_8.lst"};
@@ -22,10 +28,11 @@ module fpga_bram #(
         reset();
     end
 
-    typedef enum logic {  
+    typedef enum logic [1:0] {  
         idle,
-        service_read,
-        service_write
+        read_address,
+        read_data,
+        respond
     } state, next_state;
 
     always_ff @(posedge itf.clk) begin
@@ -39,37 +46,68 @@ module fpga_bram #(
     always_comb begin
         unique case(state)
             idle: begin
-                if(itf.read_en_i) begin
-                    next_state = service_read;
-                end else if(itf.write_en_i) begin
-                    next_state = service_write;
+                clear_address = 1'b1;
+                clear_data = 1'b1;
+                if(itf.read_en_i | itf.write_en_i) begin
+                    next_state = read_address;
                 end else begin
-                    next_state = state;
-                end
-            end
-            service_read: begin
-                if(resp_o) begin
                     next_state = idle;
                 end
             end
-            service_write: begin
-                if(resp_o) begin
-                    next_state = idle;
+            read_address: begin
+                if(itf.address_on_i) begin
+                    // Store Address
+                    store_address = 1'b1;
+                    if(itf.write_en_i) begin
+                        next_state = read_data;
+                    end else begin
+                        next_state = respond;
+                    end
+                end else begin
+                    next_state = read_address;
                 end
+            end
+            read_data: begin
+                if(itf.data_on_i) begin
+                    // Store Data
+                    store_data = 1'b1;
+                    next_state = respond
+                end else begin
+                    next_state = read_data;
+                end
+            end
+            respond: begin
+                next_state = idle;
             end
             default: next_state = state;
         endcase
     end
 
     always_ff @(posedge itf.clk) begin
+        if(store_address) begin
+            addra <= itf.address_data_bus_i;
+        end else if(clear_address) begin
+            addra <= 'x;
+        end
+
+        if(store_data) begin
+            dina <= itf.address_data_bus_i;
+        end else if(clear_data) begin
+            dina <= 'x;
+        end
+
+    end
+
+
+    always_ff @(posedge itf.clk) begin
         if(itf.ena) begin
             if(itf.wea) begin
-                internal_memory_array[itf.addra] <= itf.dina;
+                internal_memory_array[addra] <= dina;
             end else begin
-                itf.douta <= internal_memory_array[itf.addra];
+                address_data_bus_o <= internal_memory_array[addra];
             end
         end else begin
-            itf.douta <= 'x;
+            address_data_bus_o <= 'x;
         end
     end
 
