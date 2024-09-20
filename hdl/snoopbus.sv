@@ -36,7 +36,7 @@ import rv32i_types::*;
     // input   logic           ppl_d_bus_query,
 
     input   logic   [31:0]  ooo_d_addr,
-    input   logic   [1:0]   ooo_d_command,
+    input   logic   [2:0]   ooo_d_command,
     input   logic   [255:0] ooo_d_data,
 
     input   logic           ooo_d_bus_query,
@@ -58,6 +58,7 @@ import rv32i_types::*;
     output  logic   [31:0]  bus_resp_address,
     output  logic   [2:0]   bus_resp_command,
     output  logic   [255:0] bus_resp_data,
+
     input   logic           ppl_cache_hit,
     input   logic           ooo_cache_hit,
 
@@ -84,6 +85,9 @@ always_ff @(posedge clk) begin : bus_state_machine
 end
 
 always_comb begin : bus_state_next
+
+    bus_next_state = bus_free;
+
     case (state)
 
         bus_free : begin
@@ -106,7 +110,7 @@ always_comb begin : bus_state_next
             bus_next_state = bus_serving_ppl_d_response;
         end
 
-        bus_serving_ooo_d_response : begin
+        bus_serving_ppl_d_response : begin
             bus_next_state = bus_free;
         end
 
@@ -117,6 +121,13 @@ always_comb begin : bus_outgoing_signals
 
     bus_resp = '0;
     bus_ready = '0;
+    bus_command_address = '0;
+    bus_command_command = '0;
+    bus_command_data    = '0;
+
+    bus_resp_address    = '0;
+    bus_resp_command    = '0;
+    bus_resp_data       = '0;
 
     if(state == bus_free) begin
         bus_ready = 1'b1;

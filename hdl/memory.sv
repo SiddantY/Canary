@@ -462,7 +462,7 @@ I_CACHE I_CACHE(
 // TEMP DECLARATIONS FOR SNOOP BUS + SNOOP CACHES, PIPELINE CORE D-CACHE PROBABLY NEEDS TO HAVE 
 // LATCHING BEHAVIOR FOR UFP PORT
 
-logic [31:0] bus_command_address, bus_resp_address, ooo_d_bus_command_address, ppl_d_bus_command_address;
+logic [31:0] bus_command_address, bus_resp_addr, ooo_d_command_bus_address, ppl_d_command_bus_address;
 logic [2:0] bus_command_command, bus_resp_command, ooo_d_command_command, ppl_d_command_command;
 logic [255:0] bus_command_data, bus_resp_data, ooo_d_command_bus_data, ppl_d_command_bus_data;
 
@@ -475,19 +475,21 @@ logic bus_ready;
 logic [1:0] bus_resp;
 
 // PPL NEW D-CACHE SIGS
-logic [31:0] ppl_dmem_rdata, ppl_dmem_rdata_out;
-logic ppl_dmem_resp, ppl_dmem_resp_out;
+logic [31:0] ppl_dmem_rdata_out;
+logic ppl_dmem_resp_out;
 
-logic [31:0] ppl_dmem_addr, ppl_dmem_addr_use;
-logic [3:0] ppl_dmem_wmask, ppl_dmem_rmask, ppl_dmem_wmask_use, ppl_dmem_rmask_use;
-logic [31:0] ppl_dmem_wdata, ppl_dmem_wdata_use;
+logic [31:0] ppl_dmem_addr_latch, ppl_dmem_addr_use;
+logic [3:0] ppl_dmem_wmask_latch, ppl_dmem_rmask_latch, ppl_dmem_wmask_use, ppl_dmem_rmask_use;
+logic [31:0] ppl_dmem_wdata_latch, ppl_dmem_wdata_use;
+
+logic ooo_cache_hit, ppl_cache_hit;
 
 snoopbus snoopbus_dec_1
 (
     .clk(clk),
     .rst(rst),
 
-    .ooo_d_addr(ooo_d_dfp_addr),
+    .ooo_d_addr(ooo_d_command_bus_address),
     .ooo_d_command(ooo_d_command_command),
     .ooo_d_data(ooo_d_command_bus_data),
 
@@ -495,7 +497,7 @@ snoopbus snoopbus_dec_1
 
     .ooo_d_bus_data(ooo_d_bus_data),
 
-    .ppl_d_addr(ppl_d_dfp_addr),
+    .ppl_d_addr(ppl_d_command_bus_address),
     .ppl_d_command(ppl_d_command_command),
     .ppl_d_data(ppl_d_command_bus_data),
 
@@ -507,9 +509,10 @@ snoopbus snoopbus_dec_1
     .bus_command_command(bus_command_command),
     .bus_command_data(bus_command_data),
 
-    .bus_resp_address(bus_resp_address),
+    .bus_resp_address(bus_resp_addr),
     .bus_resp_command(bus_resp_command),
     .bus_resp_data(bus_resp_data),
+
     .ppl_cache_hit(ppl_cache_hit),
     .ooo_cache_hit(ooo_cache_hit),
 
@@ -536,15 +539,22 @@ snoopbus_d_cache ooo_d_cache
     .dfp_write(ooo_d_dfp_write),
     .dfp_rdata(ooo_d_dfp_rdata),
     .dfp_wdata(ooo_d_dfp_wdata),
-    .dfp_resp(ooo_d_dfp_resp)
+    .dfp_resp(ooo_d_dfp_resp),
+
+    // Incoming BUS Requests
+
+    .bus_incomming_command_address(bus_command_address),
+    .bus_incomming_command_command(bus_command_command),
 
     // MAKING BUS OUTGOING SIGNALS
 
-    .bus_command_address(ooo_d_bus_command_address),
-    .bus_command_command(ooo_d_bus_command_command),
-    .bus_command_data(ooo_d_bus_command_data),
+    .bus_command_address(ooo_d_command_bus_address),
+    .bus_command_command(ooo_d_command_command),
+    .bus_command_data(ooo_d_command_bus_data),
 
     .snoop_bus_query(ooo_d_bus_query),
+
+    .bus_cache_hit(ooo_cache_hit),
 
     // BUS INCOMMING REQUEST SIGNALS
 
@@ -588,13 +598,18 @@ snoopbus_d_cache ppl_d_cache
     .dfp_write  (ppl_d_dfp_write),
     .dfp_rdata  (ppl_d_dfp_rdata),
     .dfp_wdata  (ppl_d_dfp_wdata),
-    .dfp_resp   (ppl_d_dfp_resp)
+    .dfp_resp   (ppl_d_dfp_resp),
+
+    // Incoming BUS Requests
+
+    .bus_incomming_command_address(bus_command_address),
+    .bus_incomming_command_command(bus_command_command),
 
     // MAKING BUS OUTGOING SIGNALS
 
-    .bus_command_address(ppl_d_bus_command_address),
-    .bus_command_command(ppl_d_bus_command_command),
-    .bus_command_data(ppl_d_bus_command_data),
+    .bus_command_address(ppl_d_command_bus_address),
+    .bus_command_command(ppl_d_command_command),
+    .bus_command_data(ppl_d_command_bus_data),
 
     .snoop_bus_query(ppl_d_bus_query),
 
@@ -606,6 +621,7 @@ snoopbus_d_cache ppl_d_cache
 
     .bus_data_out(ppl_d_bus_data),               // RESPONDING TO BUS QUERY
 
+    .bus_cache_hit(ppl_cache_hit),
 
     // BUS STATUS SIGNALS
     

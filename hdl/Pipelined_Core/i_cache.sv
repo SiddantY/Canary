@@ -47,7 +47,7 @@ module I_CACHE (
     // assign ufp_wmask_32bit = {{8{ufp_wmask[3]}}, {8{ufp_wmask[2]}}, {8{ufp_wmask[1]}}, {8{ufp_wmask[0]}}};
     enum logic [1:0] {idle, comp_tag/*, wb*/, alloc}   cache_state, cache_next_state;
     generate for (genvar i = 0; i < 4; i++) begin : arrays
-        mp_cache_data_array data_array (
+        i_cache_data_array data_array (
             .clk0       (clk),
             .csb0       (1'b0),
             .web0       (data_we[i]),
@@ -56,7 +56,7 @@ module I_CACHE (
             .din0       (data_din[i]),
             .dout0      (data_dout[i])
         );
-        mp_cache_tag_array tag_array (
+        i_cache_tag_array tag_array (
             .clk0       (clk),
             .csb0       (1'b0),
             .web0       (tag_we[i]),

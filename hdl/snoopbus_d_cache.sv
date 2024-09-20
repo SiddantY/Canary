@@ -21,6 +21,11 @@ import rv32i_types::*;
     output  logic   [255:0] dfp_wdata,
     input   logic           dfp_resp,
 
+    // INCOMING BUS REQUESTS FROM OTHER CACHE
+
+    input    logic   [31:0]  bus_incomming_command_address,
+    input    logic   [2:0]   bus_incomming_command_command,
+
     // MAKING BUS OUTGOING SIGNALS
 
     output  logic   [31:0]  bus_command_address,
@@ -29,13 +34,15 @@ import rv32i_types::*;
 
     output  logic           snoop_bus_query,
 
-    // BUS INCOMMING REQUEST SIGNALS
+    // BUS RESPONSE TO OUTGOING QUERY
 
     input   logic   [31:0]  bus_resp_addr,
     input   logic   [2:0]   bus_resp_command,
     input   logic   [255:0] bus_resp_data,
 
     output  logic   [255:0] bus_data_out,               // RESPONDING TO BUS QUERY
+
+    output  logic           bus_cache_hit,
 
 
     // BUS STATUS SIGNALS
@@ -349,7 +356,7 @@ always_comb begin : state_signals
             snoop_bus_query = 1'b1;
         end
 
-        bus_rd : begin
+        bus_read : begin
             bus_command_address = ufp_addr;
             bus_command_command = bus_read;
             // bus_command_data = 'x;                                                                                                                                                                         
@@ -369,15 +376,15 @@ always_comb begin : state_signals
 
 end
 
-logic bus_cache_hit;
+// logic bus_cache_hit;
 logic [3:0] bus_way_hit;
 logic [1:0] bus_way_index;
 
 always_comb begin : cache_hit_logic_bus_port
-    bus_way_hit[0] = (tag_out1[0][22:0] == bus_command_address[31:9]);
-    bus_way_hit[1] = (tag_out1[1][22:0] == bus_command_address[31:9]);
-    bus_way_hit[2] = (tag_out1[2][22:0] == bus_command_address[31:9]);
-    bus_way_hit[3] = (tag_out1[3][22:0] == bus_command_address[31:9]);
+    bus_way_hit[0] = (tag_out1[0][22:0] == bus_incomming_command_address[31:9]);
+    bus_way_hit[1] = (tag_out1[1][22:0] == bus_incomming_command_address[31:9]);
+    bus_way_hit[2] = (tag_out1[2][22:0] == bus_incomming_command_address[31:9]);
+    bus_way_hit[3] = (tag_out1[3][22:0] == bus_incomming_command_address[31:9]);
 
     bus_cache_hit = bus_way_hit[0] | bus_way_hit[1] | bus_way_hit[2] | bus_way_hit[3];
 
@@ -388,18 +395,18 @@ always_comb begin : cache_hit_logic_bus_port
     else bus_way_index = 'x;
 
 
-    if (state != broadcast_write && state != bus_rd) begin
+    if (state != broadcast_write && state != bus_read) begin
         
         if (bus_cache_hit) begin
 
-            if (bus_command_command == pr_wr) begin
+            if (bus_incomming_command_command == pr_wr) begin
 
                 t_write_en1[bus_way_index] = 1'b1;
                 tag_in1[bus_way_index][25:24] = mesi_i;
 
             end
 
-            else if (bus_command_command == pr_rd) begin
+            else if (bus_incomming_command_command == pr_rd) begin
 
                 t_write_en1[bus_way_index] = 1'b1;
                 tag_in1[bus_way_index] = {mesi_s, 1'b0, bus_resp_addr[31:9]};
@@ -408,6 +415,9 @@ always_comb begin : cache_hit_logic_bus_port
 
             end
         end
+    end else if (state == bus_read && bus_incomming_command_command == pr_rd) begin
+        data_in1[bus_way_index] = bus_resp_data;
+        d_write_en1[bus_way_index] = 1'b1;
     end
 end
 
@@ -423,24 +433,24 @@ generate for (genvar i = 0; i < 4; i++) begin : arrays
         
         .clk1       (clk),
         .csb1       (1'b0),
-        .web1       (!d_write_en[i]),
+        .web1       (!d_write_en1[i]),
         .wmask1     (cache_wmask),
-        .addr1      (bus_command_address[8:5]),
-        .din1       (data_in[i]),
-        .dout1      (data_out[i])
+        .addr1      (bus_incomming_command_address[8:5]),
+        .din1       (data_in1[i]),
+        .dout1      (data_out1[i])
     );
     mp_cache_tag_array tag_array (
         .clk0       (clk),
         .csb0       (1'b0),
         .web0       (!t_write_en[i]),
-        .addr0      (ufp_addr),
+        .addr0      (set_index),
         .din0       (tag_in[i]),
         .dout0      (tag_out[i]),
 
         .clk1       (clk),
         .csb1       (1'b0),
         .web1       (!t_write_en1[i]),
-        .addr1      (bus_command_address[8:5]),
+        .addr1      (bus_incomming_command_address[8:5]),
         .din1       (tag_in1[i]),
         .dout1      (tag_out1[i])
     );

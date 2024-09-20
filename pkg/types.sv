@@ -193,7 +193,7 @@ package rv32i_types;
     parameter ROB_SIZE = 16;
     parameter ALU_STATION_DEPTH = 16;
     parameter LD_ST_QUEUE_DEPTH = 16;
-    parameter NUM_BRATS = 16;
+    // parameter NUM_BRATS = 16;
 
     typedef struct packed {
         bit       busy; // 1
@@ -216,8 +216,8 @@ package rv32i_types;
         bit [63:0] order;
         bit [31:0] inst;
         bit branch_pred;
-        bit brats_full;
-        bit [$clog2(NUM_BRATS)-1:0] current_brat;
+        // bit brats_full;
+        // bit [$clog2(NUM_BRATS)-1:0] current_brat;
     } reservation_station_entry_t;
 
     typedef struct packed {
@@ -248,7 +248,7 @@ package rv32i_types;
         bit       alu_or_cmp_op; // 50 + 1 = 51
         bit execute_valid;
         bit branch_mismatch;
-        bit [$clog2(NUM_BRATS)-1:0] current_brat;
+        // bit [$clog2(NUM_BRATS)-1:0] current_brat;
         rvfi_commit_packet_t rvfi;
     } data_bus_package_t;
 
@@ -259,7 +259,7 @@ package rv32i_types;
         bit [$clog2(NUM_REGS)-1:0] phys_rd; // 65 +
         bit [4:0] arch_rd;
         bit branch_mismatch;
-        bit [$clog2(NUM_BRATS)-1:0] current_brat;
+        // bit [$clog2(NUM_BRATS)-1:0] current_brat;
         // rvfi_commit_packet_t rvfi;
     } rob_entry_t;
 
@@ -333,8 +333,8 @@ package rv32i_types;
         bit [31:0] imm;
         bit [63:0] order;
         bit [31:0] inst;
-        bit brats_full;
-        bit [$clog2(NUM_BRATS)-1:0] current_brat;
+        // bit brats_full;
+        // bit [$clog2(NUM_BRATS)-1:0] current_brat;
     } ld_st_queue_t;
 
 
