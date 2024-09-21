@@ -74,6 +74,7 @@ always_comb
             op_b_br: a = r1_val;
             op_b_load: a = r1_val;
             op_b_store: a = r1_val;
+            op_b_atom:  a = r1_val;
             op_b_imm: a = r1_val;
             op_b_reg: a = r1_val;
             default: a = '0;
