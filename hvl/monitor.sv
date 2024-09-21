@@ -268,7 +268,7 @@ module monitor (
     );
 
     int spike_fd;
-    initial spike_fd = $fopen("./commit.log", "w");
+    initial spike_fd = $fopen("./commit.log", "a");
     final $fclose(spike_fd);
 
     always @ (posedge itf.clk iff !itf.rst) begin

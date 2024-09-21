@@ -4,7 +4,7 @@ num_rw_ports = 2
 num_r_ports = 0
 num_w_ports = 0
 
-word_size = 26
+word_size = 24
 # write_size = 24
 num_words = 16
 

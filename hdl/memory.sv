@@ -586,26 +586,12 @@ snoopbus_d_cache ppl_d_cache
     .rst(rst),
     .flush(1'b0),
 
-    // .ufp_addr   (ppl_dmem_addr_use),
-    // .ufp_rmask  (ppl_dmem_rmask_use),
-    // .ufp_wmask  (ppl_dmem_wmask_use),
-    // .ufp_rdata  (ppl_dmem_rdata_out),
-    // .ufp_wdata  (ppl_dmem_wdata_use),
-    // .ufp_resp   (ppl_dmem_resp_out),
-
-    // .ufp_addr   (ppl_dmem_addr_latch),
-    // .ufp_rmask  (ppl_dmem_rmask_latch),
-    // .ufp_wmask  (ppl_dmem_wmask_latch),
-    // .ufp_rdata  (ppl_dmem_rdata_out),
-    // .ufp_wdata  (ppl_dmem_wdata_latch),
-    // .ufp_resp   (ppl_dmem_resp_out),
-
-    .ufp_addr   (ppl_dmem_addr),
-    .ufp_rmask  (ppl_dmem_rmask),
-    .ufp_wmask  (ppl_dmem_wmask),
-    .ufp_rdata  (ppl_dmem_rdata),
-    .ufp_wdata  (ppl_dmem_wdata),
-    .ufp_resp   (ppl_dmem_resp),
+    .ufp_addr   (ppl_dmem_addr_use),
+    .ufp_rmask  (ppl_dmem_rmask_use),
+    .ufp_wmask  (ppl_dmem_wmask_use),
+    .ufp_rdata  (ppl_dmem_rdata_out),
+    .ufp_wdata  (ppl_dmem_wdata_use),
+    .ufp_resp   (ppl_dmem_resp_out),
 
     .dfp_addr   (ppl_d_dfp_addr),
     .dfp_read   (ppl_d_dfp_read),
@@ -652,56 +638,56 @@ snoopbus_d_cache ppl_d_cache
 );
 
 // PPL D-CACHE DMEM ADDR LATCHING, NEEDS TO BE CHANGED DUE TO ROBERT CACHE OBSLESCENE
-// always_ff @( posedge clk ) begin : ppl_dmem_out_regs
+always_ff @( posedge clk ) begin : ppl_dmem_out_regs
 
-//     if(rst) begin
-//         ppl_dmem_rdata <= '0;
-//         ppl_dmem_resp <= '0;
-//     end else begin
-//         ppl_dmem_rdata <= ppl_dmem_rdata_out;
-//         ppl_dmem_resp <= ppl_dmem_resp_out;
-//     end
+    if(rst) begin
+        ppl_dmem_rdata <= '0;
+        ppl_dmem_resp <= '0;
+    end else begin
+        ppl_dmem_rdata <= ppl_dmem_rdata_out;
+        ppl_dmem_resp <= ppl_dmem_resp_out;
+    end
 
-// end
+end
 
-// always_ff @( posedge clk ) begin : ppl_dmem_latching
-//     if(rst) begin
-//         ppl_dmem_addr_latch <= '0;
-//         ppl_dmem_rmask_latch <= '0;
-//         ppl_dmem_wmask_latch <= '0;
-//         ppl_dmem_wdata_latch <= '0;
-//         // cache_in_use <= 1'b0;
-//     end else begin
+always_ff @( posedge clk ) begin : ppl_dmem_latching
+    if(rst) begin
+        ppl_dmem_addr_latch <= '0;
+        ppl_dmem_rmask_latch <= '0;
+        ppl_dmem_wmask_latch <= '0;
+        ppl_dmem_wdata_latch <= '0;
+        // cache_in_use <= 1'b0;
+    end else begin
 
-//         if(((ppl_dmem_rmask | ppl_dmem_wmask) != '0)) begin
-//             ppl_dmem_addr_latch <= ppl_dmem_addr;
-//             ppl_dmem_rmask_latch <= ppl_dmem_rmask;
-//             ppl_dmem_wmask_latch <= ppl_dmem_wmask;
-//             ppl_dmem_wdata_latch <= ppl_dmem_wdata;
-//         end
+        if(((ppl_dmem_rmask | ppl_dmem_wmask) != '0)) begin
+            ppl_dmem_addr_latch <= ppl_dmem_addr;
+            ppl_dmem_rmask_latch <= ppl_dmem_rmask;
+            ppl_dmem_wmask_latch <= ppl_dmem_wmask;
+            ppl_dmem_wdata_latch <= ppl_dmem_wdata;
+        end
 
-//         else if(ppl_dmem_resp_out) begin
-//             ppl_dmem_addr_latch <= '0;
-//             ppl_dmem_rmask_latch <= '0;
-//             ppl_dmem_wmask_latch <= '0;
-//             ppl_dmem_wdata_latch <= '0;
+        else if(ppl_dmem_resp_out) begin
+            ppl_dmem_addr_latch <= '0;
+            ppl_dmem_rmask_latch <= '0;
+            ppl_dmem_wmask_latch <= '0;
+            ppl_dmem_wdata_latch <= '0;
 
-//         end
-//     end
-// end
+        end
+    end
+end
 
-// always_comb begin : ppl_dmem_sigs
-//     if((ppl_dmem_rmask | ppl_dmem_wmask) != '0 && !flush) begin
-//         ppl_dmem_addr_use = ppl_dmem_addr;
-//         ppl_dmem_rmask_use = ppl_dmem_rmask;
-//         ppl_dmem_wmask_use = ppl_dmem_wmask;
-//         ppl_dmem_wdata_use = ppl_dmem_wdata;
-//     end else begin
-//         ppl_dmem_addr_use = ppl_dmem_addr_latch;
-//         ppl_dmem_rmask_use = ppl_dmem_rmask_latch;
-//         ppl_dmem_wmask_use = ppl_dmem_wmask_latch;
-//         ppl_dmem_wdata_use = ooo_dmem_wdata_latch;
-//     end
-// end
+always_comb begin : ppl_dmem_sigs
+    if((ppl_dmem_rmask | ppl_dmem_wmask) != '0 && !flush) begin
+        ppl_dmem_addr_use = ppl_dmem_addr;
+        ppl_dmem_rmask_use = ppl_dmem_rmask;
+        ppl_dmem_wmask_use = ppl_dmem_wmask;
+        ppl_dmem_wdata_use = ppl_dmem_wdata;
+    end else begin
+        ppl_dmem_addr_use = ppl_dmem_addr_latch;
+        ppl_dmem_rmask_use = ppl_dmem_rmask_latch;
+        ppl_dmem_wmask_use = ppl_dmem_wmask_latch;
+        ppl_dmem_wdata_use = ooo_dmem_wdata_latch;
+    end
+end
 
 endmodule

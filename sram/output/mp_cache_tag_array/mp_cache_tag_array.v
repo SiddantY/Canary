@@ -1,6 +1,6 @@
 // OpenRAM SRAM model
 // Words: 16
-// Word size: 26
+// Word size: 24
 
 module mp_cache_tag_array(
 `ifdef USE_POWER_PINS
@@ -13,7 +13,7 @@ module mp_cache_tag_array(
     clk1,csb1,web1,addr1,din1,dout1
   );
 
-  parameter DATA_WIDTH = 26 ;
+  parameter DATA_WIDTH = 24 ;
   parameter ADDR_WIDTH = 4 ;
   parameter RAM_DEPTH = 1 << ADDR_WIDTH;
 
@@ -68,7 +68,7 @@ module mp_cache_tag_array(
   always @ (posedge clk0)
   begin : MEM_WRITE0
     if ( !web0_reg ) begin
-        mem[addr0_reg][25:0] <= din0_reg[25:0];
+        mem[addr0_reg][23:0] <= din0_reg[23:0];
     end
   end
 
@@ -80,7 +80,7 @@ module mp_cache_tag_array(
   always @ (posedge clk1)
   begin : MEM_WRITE1
     if ( !web1_reg ) begin
-        mem[addr1_reg][25:0] <= din1_reg[25:0];
+        mem[addr1_reg][23:0] <= din1_reg[23:0];
     end
   end
 
