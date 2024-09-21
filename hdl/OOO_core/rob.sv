@@ -69,16 +69,6 @@ always_ff @(posedge clk)
                         issue_ptr <= issue_ptr + 1'b1;
                     end
                 
-                if(update_rob_valid && rob[valid_intruction_index].instruction != '0) // if an instruction is done committing mark it as done
-                    begin
-                        
-                        rob[valid_intruction_index].done <= 1'b1;
-                        rob[valid_intruction_index].branch_mismatch <= execute_outputs.branch_mismatch;
-                        rvfi_rob_mirror[valid_intruction_index] <= execute_outputs.rvfi;
-                        rvfi_rob_mirror[valid_intruction_index].valid <= 1'b1;
-
-                        // rob[valid_intruction_index].rvfi <= execute_outputs.rvfi;
-                    end
                 
                 if(update_rob_valid_mul && rob[valid_intruction_index_mul].instruction != '0) // if an instruction is done committing mark it as done
                     begin
@@ -96,6 +86,17 @@ always_ff @(posedge clk)
                         rob[valid_intruction_index_ldst].branch_mismatch <= 1'b0;
                         rvfi_rob_mirror[valid_intruction_index_ldst] <= execute_outputs_ldst.rvfi;
                         rvfi_rob_mirror[valid_intruction_index_ldst].valid <= 1'b1;
+
+                        // rob[valid_intruction_index].rvfi <= execute_outputs.rvfi;
+                    end
+                
+                if(update_rob_valid && rob[valid_intruction_index].instruction != '0) // if an instruction is done committing mark it as done
+                    begin
+                        
+                        rob[valid_intruction_index].done <= 1'b1;
+                        rob[valid_intruction_index].branch_mismatch <= execute_outputs.branch_mismatch;
+                        rvfi_rob_mirror[valid_intruction_index] <= execute_outputs.rvfi;
+                        rvfi_rob_mirror[valid_intruction_index].valid <= 1'b1;
 
                         // rob[valid_intruction_index].rvfi <= execute_outputs.rvfi;
                     end

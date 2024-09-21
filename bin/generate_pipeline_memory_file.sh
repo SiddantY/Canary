@@ -13,7 +13,7 @@ OBJCOPY=riscv32-unknown-elf-objcopy
 OBJDUMP=riscv32-unknown-elf-objdump
 LINK_FILE=$SH_LOCATION/link.ld
 START_FILE=$SH_LOCATION/startup.s
-MEM_LST_START_ADDR="0x60000000" # in bytes
+MEM_LST_START_ADDR="0x70000000" # in bytes
 
 # Command line parameters
 IN_FILE=$1
@@ -118,5 +118,5 @@ edisassembly
 eobjcopy
 
 for addressability in 1 4 8 32; do
-    egenerate $TARGET_DIR/memory_pipeline_$addressability.lst $addressability
+    egenerate $TARGET_DIR/memory_$addressability.lst $addressability
 done

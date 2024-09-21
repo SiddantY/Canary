@@ -84,9 +84,13 @@ module banked_memory
 
     task automatic reset();
         automatic string memfile = {getenv("ECE411_MEMLST"), "_32.lst"};
+        automatic string memfile1 = {getenv("ECE411_MEMLST_PIPE"), "_32.lst"};
         internal_memory_array.delete();
         $readmemh(memfile, internal_memory_array);
+        $readmemh(memfile1, internal_memory_array);
         $display("using memory file %s", memfile);
+        $display("using memory file %s", memfile1);
+        
         tRRD_counter = 0;
         for (int i = 0; i < DRAM_PARAM_NUM_BANKS; i++) begin
             active_row[i] = -1;

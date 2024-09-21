@@ -149,8 +149,11 @@ os.chdir("../hvl")
 if os.path.isfile("rvfi_reference.svh"):
     os.remove("rvfi_reference.svh")
 
-with open("rvfi_reference.json") as f:
+with open("rvfi_reference_ooo.json") as f:
     j = json.load(f)
+
+with open("rvfi_reference_pipeline.json") as f:
+    j_pipe = json.load(f)
 
 if not all([x in j for x in required_list]):
     print("incomplete list in rvfi_reference.json", file=sys.stderr)
@@ -167,5 +170,11 @@ if not all([set(j[x]) <= allowed_char for x in j]):
 with open("rvfi_reference.svh", 'w') as f:
     f.write("always_comb begin\n")
     for x in j:
-        f.write(f"    mon_itf.{x} = {j[x]};\n")
+        f.write(f"    ooo_mon_itf.{x} = {j[x]};\n")
+    f.write("end\n")
+
+with open("rvfi_reference.svh", 'a') as f:
+    f.write("\nalways_comb begin\n")
+    for x in j_pipe:
+        f.write(f"    pipeline_mon_itf.{x} = {j_pipe[x]};\n")
     f.write("end\n")

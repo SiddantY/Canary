@@ -2,30 +2,39 @@ module ooo_cpu
 import rv32i_types::*;
 (
     // Explicit dual port connections when caches are not integrated into design yet (Before CP3)
-    input   logic           clk,
-    input   logic           rst,
+    input   logic               clk,
+    input   logic               rst,
 
-    output  logic   [31:0]  imem_addr,
-    output  logic   [3:0]   imem_rmask,
-    input   logic   [31:0]  imem_rdata,
-    input   logic           imem_resp,
+    output  logic               flush,
+    output  logic               jump_en,
+    output  logic               jalr_done,
 
-    output  logic   [31:0]  dmem_addr,
-    output  logic   [3:0]   dmem_rmask,
-    output  logic   [3:0]   dmem_wmask,
-    input   logic   [31:0]  dmem_rdata,
-    output  logic   [31:0]  dmem_wdata,
-    input   logic           dmem_resp
+    output  logic   [31:0]      imem_addr,
+    output  logic               input_valid,
+    input   logic   [31:0]      imem_rdata,
+    input   logic               imem_resp,
+    input   logic               imem_stall,
+    input   logic   [31:0]      imem_raddr,
+
+    output  logic   [31:0]      dmem_addr,
+    output  logic   [3:0]       dmem_rmask,
+    output  logic   [3:0]       dmem_wmask,
+    input   logic   [31:0]      dmem_rdata,
+    output  logic   [31:0]      dmem_wdata,
+    input   logic               dmem_resp
 
     // Single memory port connection when caches are integrated into design (CP3 and after)
-    /*
-    output  logic   [31:0]  bmem_addr,
-    output  logic           bmem_read,
-    output  logic           bmem_write,
-    input   logic   [255:0] bmem_rdata,
-    output  logic   [255:0] bmem_wdata,
-    input   logic           bmem_resp
-    */
+    
+    // output logic   [31:0]      bmem_addr,
+    // output logic               bmem_read,
+    // output logic               bmem_write,
+    // output logic   [63:0]      bmem_wdata,
+    
+    // input logic               bmem_ready,
+    // input logic   [31:0]      bmem_raddr,
+    // input logic   [63:0]      bmem_rdata,
+    // input logic               bmem_rvalid
+    
 );
 
     // Making lint happy yeah
@@ -35,18 +44,18 @@ import rv32i_types::*;
     // assign dmem_wdata = '0;
 
     logic [63:0] instr;
-    logic [31:0] pc, pc_jump;//, jump_pc_latch;
+    logic [31:0] pc, pc_jump, ppc_out;//, jump_pc_latch;
 
     logic branch_pred;
 
-    logic jump_en;//, jump_en_latch;
+    // logic jump_en;//, jump_en_latch;
     logic jalr_en;
-    logic jalr_done;
+    // logic jalr_done;
+    logic [31:0] jalr_pc;
 
-    logic flush;
+    // logic flush;
     logic [31:0] missed_pc;
 
-    logic [31:0] jalr_pc;
     logic [31:0] pr1_val, pr2_val, pr1_val_mul, pr2_val_mul;
 
     reservation_station_entry_t line_to_execute, line_to_execute_mul;
@@ -63,16 +72,42 @@ import rv32i_types::*;
     rvfi_commit_packet_t committer;
 
 
-    assign branch_pred = 1'b0;
+    // logic   [31:0]  imem_addr;
+    logic           imem_read;
+    // logic   [31:0]  imem_rdata;
+    // logic           imem_resp;
+    // logic   [31:0]  imem_raddr;
+    // logic               input_valid;
+    // logic               imem_stall;
 
 
-    fetch
-        #(
-        .IQ_DATA_WIDTH(IQ_DATA_WIDTH),
-        .IQ_DEPTH(IQ_DEPTH)
-    )
-    fetch_dec_1
-    (
+
+    // logic   [31:0]  dmem_addr;
+    // logic   [3:0]   dmem_rmask;
+    // logic   [3:0]   dmem_wmask;
+    // logic   [31:0]  dmem_rdata;
+    // logic   [31:0]  dmem_wdata;
+    // logic           dmem_resp;
+
+    logic   [31:0]  dmem_raddr; // DOES NOTHING YET
+
+    
+    logic [31:0] dinst;
+    logic [31:0] dpc_rdata;
+    logic [31:0] dpc_wdata;
+
+    logic bren;
+    logic pc_req;
+
+    logic [63:0] fc;
+
+    always_ff @(posedge clk)
+        begin
+            if(rst) fc <= '0;
+            else if (flush) fc <= fc + 1'b1;
+        end
+
+    fetch fetch(
         .clk(clk),
         .rst(rst),
         .pc_jump(pc_jump),
@@ -82,29 +117,29 @@ import rv32i_types::*;
         .jalr_pc(jalr_pc),
         .flush(flush),
         .missed_pc(missed_pc),
-        .pc_branch('0), // NO BR YET
-        .br_en(1'b0), // NO BR YET
         .imem_rdata(imem_rdata),
         .imem_resp(imem_resp),
         .imem_addr(imem_addr),
-        .imem_rmask(imem_rmask),
+        .imem_read(imem_read),
+        .imem_raddr(imem_raddr),
+        .imem_stall(imem_stall),
+        .input_valid(input_valid),
         .instruction(instr),
         .pc(pc),
         .read_resp(read_resp),
-        .request_new_instr(request_new_instr)
+        .request_new_instr(request_new_instr),
+        .pc_req(pc_req)
     );
 
     decode decode(
         .clk(clk),
         .rst(rst),
         .instruction(instr),
-        .branch_pred(branch_pred),
-        .flush(flush),
-        .missed_pc(missed_pc),
+        .branch_pred(1'b0),
         .jump_pc(pc_jump),
         .jump_en(jump_en),
         .jalr_en(jalr_en),
-        .execute_outputs_comb(execute_outputs), 
+        .execute_outputs_comb(execute_outputs),
         .pr1_val(pr1_val),
         .pr2_val(pr2_val),
         .execute_valid_alu(execute_valid_alu),
@@ -114,6 +149,8 @@ import rv32i_types::*;
         .pr2_val_mul(pr2_val_mul),
         .execute_valid_mul(execute_valid_mul),
         .execute_outputs_mul(execute_outputs_mul),
+        .flush(flush),
+        .missed_pc(missed_pc),
         .request_new_instr(request_new_instr),
         .read_resp(read_resp),
         .valid_commit(valid_commit),
@@ -126,7 +163,51 @@ import rv32i_types::*;
         .dmem_resp(dmem_resp)
     );
 
+    // arbiter arbiter( // ASSERTS ADDR UNTIL DATA IS RECIEVED, 1 CACHE QUERY AT A TIME
+    //     .clk(clk),
+    //     .rst(rst),
+    //     .flush(flush),
+    //     .jump_en(jump_en),
+    //     .jalr_en(jalr_done),
+    //     // .br_en(bren),
+
+    //     .imem_addr(imem_addr),
+    //     .input_valid(input_valid),
+    //     .imem_stall(imem_stall),
+    //     .imem_rdata(imem_rdata),
+    //     .imem_raddr(imem_raddr),
+    //     .imem_resp(imem_resp),
+    //     // .ppc(ppc),
+    //     // .pc_req(pc_req),
+    //     // .pc_req_out(pc_req_out),
+    //     // .br_en(br_en),
+
+    //     // .ppc_out(ppc_out),
+    //     // .br_en_out(br_en_out),
+
+    //     .dmem_addr(dmem_addr),
+    //     .dmem_rmask(dmem_rmask),
+    //     .dmem_wmask(dmem_wmask),
+    //     .dmem_wdata(dmem_wdata),
+    //     // .dmem_raddr(dmem_raddr),
+    //     .dmem_rdata(dmem_rdata),
+    //     .dmem_resp(dmem_resp),
+
+
+    //     .bmem_addr(bmem_addr),
+    //     .bmem_read(bmem_read),
+    //     .bmem_write(bmem_write),
+    //     .bmem_wdata(bmem_wdata),
+    //     .bmem_ready(bmem_ready),
+
+    //     .bmem_raddr(bmem_raddr),
+    //     .bmem_rdata(bmem_rdata),
+    //     .bmem_rvalid(bmem_rvalid)
+    // );
+
     execute execute_dec(
+        // .clk(clk),
+        // .rst(rst),
         .line_to_execute(line_to_execute),
         .pr1_val(pr1_val),
         .pr2_val(pr2_val),

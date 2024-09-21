@@ -45,7 +45,7 @@ logic [31:0] pr2_val_ldst_latch;
 logic [31:0] dmem_addr_latch, dmem_wdata_latch;
 logic [3:0] dmem_rmask_latch, dmem_wmask_latch;
 
-logic mem_ready;
+logic mem_ready, mem_ready_ac;
 logic ld_st_q_read_resp;
 logic ld_st_q_full;
 logic ld_st_q_empty;
@@ -58,9 +58,13 @@ logic dmem_cout;
 
 always_ff @(posedge clk)
     begin
-        if(rst || flush)
+        if(rst | flush)
             begin
-                mem_ready <= 1'b1;
+                if(rst | dmem_resp) begin
+                    mem_ready <= 1'b1;
+                end else if(ld_st_q_read_resp) begin
+                    mem_ready <= 1'b0;
+                end
                 ld_st_queue_data_out_latch <= '0;
                 dmem_wdata_latch <= '0;
                 dmem_addr_latch <= '0;
@@ -91,6 +95,15 @@ always_ff @(posedge clk)
                     end
             end
     end
+
+always_comb begin : memReadyStuff
+    
+    mem_ready_ac = mem_ready;
+    if (ld_st_q_read_resp) begin
+        mem_ready_ac = '0;
+    end
+    
+end
 
 always_comb
     begin
@@ -189,7 +202,7 @@ always_comb
 
         // if a load and store not a valid thing to update the rat, prf, rob. 0 is ld/st, 1 is alu/cmp
         execute_outputs_ldst.alu_or_cmp_op = 1'b0;
-        execute_outputs_ldst.execute_valid = dmem_resp;
+        execute_outputs_ldst.execute_valid = dmem_resp && ld_st_queue_data_out_latch.inst != '0;
         execute_outputs_ldst.arch_rd = ld_st_queue_data_out_latch.arch_rd;
         
         // rvfi
@@ -225,7 +238,7 @@ load_store_queue_dec_1
     .rob_head(rob_head),
     .data_in(ld_st_queue_data_in),
     .write_enable(valid_instruction && ~flush),
-    .read_enable(mem_ready && ~flush),
+    .read_enable(mem_ready_ac && ~flush),
     .phys_valid_vector(phys_valid_vector),
     .queue_empty(ld_st_q_empty),
     .queue_full(ld_st_q_full),

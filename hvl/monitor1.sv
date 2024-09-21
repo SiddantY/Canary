@@ -1,4 +1,4 @@
-module monitor (
+module monitor1 (
     mon_itf itf
 );
 
@@ -268,7 +268,7 @@ module monitor (
     );
 
     int spike_fd;
-    initial spike_fd = $fopen("./commit.log", "w");
+    initial spike_fd = $fopen("./commit1.log", "w");
     final $fclose(spike_fd);
 
     always @ (posedge itf.clk iff !itf.rst) begin
@@ -278,7 +278,7 @@ module monitor (
                     $display("dut commit No.%d, rd_s: x%02d, rd: 0x%h", itf.order[channel], itf.rd_addr[channel], itf.rd_addr[channel] ? itf.rd_wdata[channel] : 5'd0);
                 end
                 if (itf.inst[channel][1:0] == 2'b11) begin
-                    $fwrite(spike_fd, "core   0: 3 0x%h (0x%h)", itf.pc_rdata[channel], itf.inst[channel]);
+                    $fwrite(spike_fd, "core   0: 3 0x6%h (0x%h)", itf.pc_rdata[channel][27:0], itf.inst[channel]);
                 end else begin
                     $fwrite(spike_fd, "core   0: 3 0x%h (0x%h)", itf.pc_rdata[channel], itf.inst[channel][15:0]);
                 end

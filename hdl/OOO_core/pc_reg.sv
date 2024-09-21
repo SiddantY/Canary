@@ -10,7 +10,7 @@ import rv32i_types::*;
     input   logic   [31:0]  jalr_pc,
     input   logic           flush,
     input   logic   [31:0]  missed_pc,
-    output  logic   [31:0]  pc, pc_prev, pc_tmp
+    output  logic   [31:0]  pc, pc_prev // , pc_tmp
 );
 
 logic [31:0] pc_next;
@@ -20,7 +20,7 @@ always_ff @(posedge clk)
     begin
         if(rst) // pc defaults to 0x6000_0000 on reset
             begin
-                pc_tmp <= 32'h6000_0000;
+                pc <= 32'h6000_0000;
                 pc_prev <= 32'h6000_0000;
             end
         else // pc <- pc_next yk
@@ -28,22 +28,22 @@ always_ff @(posedge clk)
                 // TODO: add stalling pc on Q full
                 if(request_new_inst == 1'b1)
                     begin
-                        pc_tmp <= pc_next;
-                        pc_prev <= pc_tmp;
+                        pc <= pc_next;
+                        pc_prev <= pc;
                     end
                 else
                     begin
-                        pc_tmp <= flush ? pc_next : pc_tmp;
+                        pc <= flush | jump_en | jalr_done ? pc_next : pc;
                         pc_prev <= pc_prev;  
                     end
             end
     end
 
-always_comb begin : pc_magic
-    if (request_new_inst) pc = pc_next;
-    else if(flush) pc = pc_next;
-    else pc = pc_tmp;
-end
+// always_comb begin : pc_magic
+//     if (request_new_inst) pc = pc_next;
+//     else if(flush) pc = pc_next;
+//     else pc = pc_tmp;
+// end
 
 always_comb
     begin
@@ -65,7 +65,7 @@ always_comb
             end
         else // else pc just pc + 4
             begin
-                pc_next = pc_tmp + 32'h4;
+                pc_next = pc + 32'h4;
             end
     end
 

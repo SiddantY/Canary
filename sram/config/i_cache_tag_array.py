@@ -1,10 +1,10 @@
 tech_name = "freepdk45"
 
-num_rw_ports = 2
+num_rw_ports = 1
 num_r_ports = 0
 num_w_ports = 0
 
-word_size = 26
+word_size = 24
 # write_size = 24
 num_words = 16
 
@@ -22,7 +22,7 @@ perimeter_pins = False
 load_scales = [0.5, 1, 4]
 slew_scales = [0.5, 1]
 
-output_name = "mp_cache_tag_array"
+output_name = "i_cache_tag_array"
 output_path = f"output/{output_name}"
 
 print_banner = False

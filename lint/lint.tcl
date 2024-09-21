@@ -4,7 +4,7 @@ if {$env(SRAM_LIB) != ""} {
 }
 read_file -type awl lint.awl
 
-set_option top cpu
+set_option top cpu_top
 set_option enable_gateslib_autocompile yes
 set_option language_mode verilog
 set_option enableSV09 yes
@@ -12,9 +12,9 @@ set_option enable_save_restore no
 set_option mthresh 2000000000
 set_option sgsyn_loop_limit 2000000000
 
-current_goal Design_Read -top ooo_cpu
+current_goal Design_Read -top cpu_top
 
-current_goal lint/lint_turbo_rtl -top ooo_cpu
+current_goal lint/lint_turbo_rtl -top cpu_top
 
 set_parameter checkfullstruct true
 
