@@ -57,7 +57,7 @@ always_latch
                         dstall = 1'b1;
                     end
                 
-                if(dmem_resp) // response set stall to low
+                if(dmem_resp) // response set stall to low // -- with atomics need to change to ((dmem_resp && amo_done) | amo_done)
                     begin
                         dstall = 1'b0;
                     end
@@ -153,16 +153,33 @@ always_comb
 always_comb
     begin : dmem_rdata_capture
 
-        unique case (ex_mem_reg.funct3)
-            lb : mem_wb_reg_next.read_data = {{24{dmem_rdata[7 +8 *ex_mem_reg.alu_result[1:0]]}}, dmem_rdata[8 *ex_mem_reg.alu_result[1:0] +: 8 ]};
-            lbu: mem_wb_reg_next.read_data = {{24{1'b0}}                          , dmem_rdata[8 *ex_mem_reg.alu_result[1:0] +: 8 ]};
-            lh : mem_wb_reg_next.read_data = {{16{dmem_rdata[15+16*ex_mem_reg.alu_result[1]  ]}}, dmem_rdata[16*ex_mem_reg.alu_result[1]   +: 16]};
-            lhu: mem_wb_reg_next.read_data = {{16{1'b0}}                          , dmem_rdata[16*ex_mem_reg.alu_result[1]   +: 16]};
-            lw : mem_wb_reg_next.read_data = dmem_rdata;
-            default: mem_wb_reg_next.read_data = 'x;
-        endcase
+
+        //  NORMAL MEM Instructions
+        if (ex_mem_reg.opcode == op_b_load) begin
+
+            unique case (ex_mem_reg.funct3)
+                lb : mem_wb_reg_next.read_data = {{24{dmem_rdata[7 +8 *ex_mem_reg.alu_result[1:0]]}}, dmem_rdata[8 *ex_mem_reg.alu_result[1:0] +: 8 ]};
+                lbu: mem_wb_reg_next.read_data = {{24{1'b0}}                          , dmem_rdata[8 *ex_mem_reg.alu_result[1:0] +: 8 ]};
+                lh : mem_wb_reg_next.read_data = {{16{dmem_rdata[15+16*ex_mem_reg.alu_result[1]  ]}}, dmem_rdata[16*ex_mem_reg.alu_result[1]   +: 16]};
+                lhu: mem_wb_reg_next.read_data = {{16{1'b0}}                          , dmem_rdata[16*ex_mem_reg.alu_result[1]   +: 16]};
+                lw : mem_wb_reg_next.read_data = dmem_rdata;
+                default: mem_wb_reg_next.read_data = 'x;
+            endcase
+        
+        end
+
+        else if (ex_mem_reg.opcode == op_b_atom) begin
+
+                if (ex_mem_reg.funct7[6:2] != scw) begin
+
+                    mem_wb_reg_next.read_data = dmem_rdata;
+
+                end
+
+        end
 
     end : dmem_rdata_capture
+
 
 always_comb
     begin : next_reg_setting

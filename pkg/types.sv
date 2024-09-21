@@ -18,7 +18,8 @@ package rv32i_types;
         op_b_imm   = 7'b0010011, // I arith ops with register/immediate operands 
         op_b_reg   = 7'b0110011, // R arith ops with register operands 
         //op_b_mul   = 7'b0110011, // R multiply operation
-        op_b_csr   = 7'b1110011  // I control and status register 
+        op_b_csr   = 7'b1110011,  // I control and status register 
+        op_b_atom  = 7'b0101111   // A Atomic Instructions
     } rv32i_op_b_t;
 
     typedef enum bit [2:0] {
@@ -37,6 +38,22 @@ package rv32i_types;
         lbu = 3'b100,
         lhu = 3'b101
     } load_funct3_t;
+
+    typedef enum bit [4:0] {
+        
+        lrw     = 5'b00010,
+        scw     = 5'b00011,
+        swapw   = 5'b00001,
+        addw    = 5'b00000,
+        xorw    = 5'b00100,
+        andw    = 5'b01100,
+        orw     = 5'b01000,
+        min     = 5'b10000,
+        max     = 5'b10100,
+        minu    = 5'b11000,
+        maxu    = 5'b11100
+
+    } atomic_funct7_t;
 
     typedef enum bit [2:0] {
         sb = 3'b000,
