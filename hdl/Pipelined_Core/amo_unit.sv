@@ -12,7 +12,14 @@ module amo_unit (
     output logic [31:0] mem_data_out,// Data to write to memory
     output logic amo_done,           // Flag indicating AMO completion
     output logic mem_read,           // Control signal for memory read
-    output logic mem_write           // Control signal for memory write
+    output logic mem_write,           // Control signal for memory write
+
+
+    // locking stuff
+    output  logic   [31:0]     locked_address,
+    output  logic              lock,
+
+    input   logic   [31:0]     address_to_lock
 );
 
     // Define states in lowercase
@@ -21,7 +28,9 @@ module amo_unit (
         load ,
         calc ,
         store,
-        done 
+        done,
+        lwr,
+        swc, 
     } state, next_state;
 
     logic [31:0] loaded_value, computed_value;
@@ -70,6 +79,9 @@ module amo_unit (
         mem_data_out = 32'b0;
         next_state = state;
 
+        locked_address = '0;
+        lock = 1'b0;
+
         case (state)
             idle: begin
                 if (amo_valid) begin
@@ -80,7 +92,16 @@ module amo_unit (
 
             load: begin
                 mem_read = 1;
+                lock = 1'b1;
+                locked_address = address_to_lock;
                 if (mem_resp) next_state = calc;
+            end
+
+            lrw : begin
+                mem_read = 1;
+                lock = 1'b1;
+                locked_address = address_to_lock;
+                if(mem_resp) next_state = done;
             end
 
             calc: begin
@@ -88,6 +109,12 @@ module amo_unit (
             end
 
             store: begin
+                mem_write = 1;
+                mem_data_out = computed_value;
+                if (mem_resp) next_state = done;
+            end
+
+            swc : begin
                 mem_write = 1;
                 mem_data_out = computed_value;
                 if (mem_resp) next_state = done;

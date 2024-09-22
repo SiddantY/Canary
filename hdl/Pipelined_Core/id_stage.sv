@@ -162,7 +162,7 @@ always_comb
     begin : control_unit
         
         unique case(opcode) // writeback / regf_we
-            op_b_lui, op_b_auipc, op_b_jal, op_b_jalr, op_b_load, op_b_imm, op_b_reg: writeback = 1'b1;
+            op_b_lui, op_b_auipc, op_b_jal, op_b_jalr, op_b_load, op_b_imm, op_b_reg, op_b_atom: writeback = 1'b1;
             op_b_store, op_b_br: writeback = 1'b0;
             default: writeback = 'x;
         endcase
@@ -180,8 +180,8 @@ always_comb
         endcase
 
         unique case(opcode) // reg = 0, imm = 1
-            op_b_store, op_b_lui, op_b_auipc, op_b_jal, op_b_jalr, op_b_load, op_b_imm, op_b_atom: alu_src = 1'b1;
-            op_b_br, op_b_reg: alu_src = 1'b0;
+            op_b_store, op_b_lui, op_b_auipc, op_b_jal, op_b_jalr, op_b_load, op_b_imm: alu_src = 1'b1;
+            op_b_br, op_b_reg, op_b_atom: alu_src = 1'b0;
             default: alu_src = 'x;
         endcase
 

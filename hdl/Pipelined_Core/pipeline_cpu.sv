@@ -15,7 +15,12 @@ import rv32i_types::*;
     output  logic   [3:0]   dmem_wmask,
     input   logic   [31:0]  dmem_rdata,
     output  logic   [31:0]  dmem_wdata,
-    input   logic           dmem_resp
+    input   logic           dmem_resp,
+
+    output  logic   [31:0]  locked_address,
+    output  logic           lock,
+
+    output  logic           amo,
 
     // Single memory port connection when caches are integrated into design (CP3 and after)
     
@@ -222,7 +227,11 @@ mem_stage mem_stage_dec_1
     .dmem_wdata(dmem_wdata),
 
     .dstall(dstall),
-    .mem_wb_reg_next(mem_wb_reg_next)
+    .mem_wb_reg_next(mem_wb_reg_next),
+
+    .locked_address(locked_address),
+    .lock(lock),
+    .amo(amo)
 );
 
 wb_stage wb_stage_dec_1

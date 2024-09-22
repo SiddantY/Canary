@@ -32,6 +32,11 @@ module memory(
     input   logic   [31:0]  ppl_dmem_wdata,
     output  logic           ppl_dmem_resp,
 
+    input   logic   [31:0]  ppl_locked_address,
+    input   logic           ppl_lock,
+
+    input   logic           amo,
+
     output logic   [31:0]   bmem_addr,
     output logic            bmem_read,
     output logic            bmem_write,
@@ -106,6 +111,31 @@ always_comb begin : dmem_sigs
         ooo_dmem_wdata_use = ooo_dmem_wdata_latch;
     end
 end
+
+// AMO STUFF
+logic ppl_unlock;
+logic [31:0] this_address_locked_by_ppl;
+
+// Lock Table -- needs to be revised to 16 address probably -- ROB size
+lock_table lock_table_1(
+
+    .clk(clk),
+    .rst(rst),
+
+    .ooo_locked_address('0),
+    .ooo_lock('0),
+
+    .ooo_unlock('0),
+
+    .ppl_locked_address(ppl_locked_address),
+    .ppl_lock(ppl_lock),
+
+    .ppl_unlock(ppl_unlock),
+
+    .this_address_locked_by_ooo(),
+    .this_address_locked_by_ppl(this_address_locked_by_ppl)
+);
+
 
 // Cache dfp signals
 logic [31:0] ooo_i_dfp_addr, ooo_d_dfp_addr, ppl_i_dfp_addr, ppl_d_dfp_addr;

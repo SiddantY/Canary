@@ -42,6 +42,14 @@ logic           ppl_dmem_resp;
 
 logic flush, jump_en, jalr_done;
 
+// AMO INSTRUCTION SIGNALS
+
+logic [31:0] ppl_locked_address;
+logic        ppl_lock;
+
+logic ppl_amo;
+
+
 ooo_cpu ooo(
     .clk            (clk),
     .rst            (rst),
@@ -79,7 +87,11 @@ pipeline_cpu ppl(
     .dmem_wmask(ppl_dmem_wmask),
     .dmem_rdata(ppl_dmem_rdata),
     .dmem_wdata(ppl_dmem_wdata),
-    .dmem_resp(ppl_dmem_resp)
+    .dmem_resp(ppl_dmem_resp),
+
+    .locked_address(ppl_locked_address),
+    .lock(ppl_lock),
+    .amo(ppl_amo)
 );
 
 memory memory_unit(
@@ -115,6 +127,11 @@ memory memory_unit(
     .ppl_dmem_rdata(ppl_dmem_rdata),
     .ppl_dmem_wdata(ppl_dmem_wdata),
     .ppl_dmem_resp(ppl_dmem_resp),
+
+    .ppl_locked_address(ppl_locked_address),
+    .ppl_lock(ppl_lock),
+
+    .ppl_amo(ppl_amo),
 
     .bmem_addr(bmem_addr),
     .bmem_read(bmem_read),

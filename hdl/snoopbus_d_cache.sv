@@ -45,6 +45,8 @@ import rv32i_types::*;
     output  logic           bus_cache_hit,
 
 
+    input   logic           amo,
+
     // BUS STATUS SIGNALS
     
     input   logic           bus_ready,

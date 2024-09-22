@@ -15,8 +15,26 @@ import rv32i_types::*;
     output  logic   [31:0]      dmem_wdata,
 
     output  logic               dstall,
-    output  mem_wb_reg_t        mem_wb_reg_next
+    output  mem_wb_reg_t        mem_wb_reg_next,
+
+    output  logic   [31:0]      locked_address,
+    output  logic               lock,
+
+    output  logic               amo,
 );
+
+logic amo_valid;
+logic [31:0] mem_data_in;
+logic [31:0] amo_operand;
+logic [2:0] amo_funct;
+
+logic [31:0] mem_data_out;
+logic amo_done;
+logic amo_mem_read;
+logic amo_mem_write;
+
+assign amo = ex_mem_reg.opcode == op_b_atom ? 1'b1 : 1'b0;
+
 
 logic p2o; // (prevent_twice_occurance) this is used so that magic mem doesn't respond twice 1 address due to keeping the address up
 always_ff @(posedge clk)
@@ -57,7 +75,11 @@ always_latch
                         dstall = 1'b1;
                     end
                 
-                if(dmem_resp) // response set stall to low // -- with atomics need to change to ((dmem_resp && amo_done) | amo_done)
+                if(dmem_resp && (ex_mem_reg.mem_read | ex_mem_reg.mem_write)) // response set stall to low // -- with atomics need to change to ((dmem_resp && amo_done) | amo_done)
+                    begin
+                        dstall = 1'b0;
+                    end
+                else if(atom_done)
                     begin
                         dstall = 1'b0;
                     end
@@ -88,7 +110,11 @@ always_comb
                     default: dmem_rmask_holder = '0;  
                 endcase
             end
-        else
+        else if (amo_mem_read) begin
+
+                dmem_rmask_holder = 4'b1111;
+        
+        end else
             begin
                 dmem_rmask_holder = '0;
             end
@@ -113,7 +139,12 @@ always_comb
                     default: dmem_wdata_holder = '0;
                 endcase
             end
-        else
+        else if (amo_mem_write) begin
+
+                dmem_wmask_holder = 4'b1111;
+                dmem_wdata_holder = mem_data_out;
+
+        end else
             begin
                 dmem_wmask_holder = '0;
             end
@@ -123,7 +154,7 @@ always_comb
         dmem_wmask = '0;
         dmem_wdata = '0;
 
-        if(ex_mem_reg.mem_read && p2o && ex_mem_reg.rvfi.monitor_valid) // load
+        if((ex_mem_reg.mem_read && p2o && ex_mem_reg.rvfi.monitor_valid) || (amo_mem_read && p2o)) // load
         // if(ex_mem_reg.mem_read && ex_mem_reg.rvfi.monitor_valid) // load
 
             begin
@@ -134,7 +165,7 @@ always_comb
 
             end
         
-        if(ex_mem_reg.mem_write && p2o && ex_mem_reg.rvfi.monitor_valid) // store
+        if((ex_mem_reg.mem_write && p2o && ex_mem_reg.rvfi.monitor_valid)  || (amo_mem_write && p2o) ) // store
         // if(ex_mem_reg.mem_write && ex_mem_reg.rvfi.monitor_valid) // store
 
             begin
@@ -152,6 +183,9 @@ always_comb
 
 always_comb
     begin : dmem_rdata_capture
+
+        mem_data_in = '0;
+        mem_wb_reg_next.read_data = '0;
 
 
         //  NORMAL MEM Instructions
@@ -173,6 +207,7 @@ always_comb
                 if (ex_mem_reg.funct7[6:2] != scw) begin
 
                     mem_wb_reg_next.read_data = dmem_rdata;
+                    mem_data_in = dmem_rdata;
 
                 end
 
@@ -184,7 +219,7 @@ always_comb
 always_comb
     begin : next_reg_setting
 
-        mem_wb_reg_next.rd_v = ex_mem_reg.alu_result;
+        mem_wb_reg_next.rd_v = opcode == op_b_atom ? mem_data_out : ex_mem_reg.alu_result;
         mem_wb_reg_next.rd_s = ex_mem_reg.rd_s;
         mem_wb_reg_next.regf_we = ex_mem_reg.regf_we;
         mem_wb_reg_next.mem_read = ex_mem_reg.mem_read;
@@ -209,6 +244,32 @@ always_comb
         mem_wb_reg_next.rvfi.monitor_mem_wdata = (ex_mem_reg.mem_write  && ex_mem_reg.rvfi.monitor_valid) ? dmem_wdata_holder : '0;
         
     end : next_reg_setting
+
+always_comb begin
+
+    atom_valid = ex_mem_reg.opcode == op_b_atom ? 1'b1 : 1'b0;
+
+end
+
+amo_unit ppl_amo_unit (
+
+    .clk(clk),                 
+    .rst(rst),                 
+    .amo_valid(amo_valid),              // Signal that an AMO instruction is in the MEM stage
+    .mem_data_in(mem_data_in),          // Data read from memory
+    .amo_operand(ex_mem_reg.rs2_v),     // Operand for AMO operation -- This is rs2_value
+    .amo_funct(amo_funct),              // AMO function code (e.g., ADD, AND, OR, XOR)
+
+    .mem_resp(dmem_resp),
+
+    .mem_data_out(mem_data_out),// Data to write to memory
+    .amo_done(amo_done),           // Flag indicating AMO completion
+    .mem_read(amo_mem_read),           // Control signal for memory read
+    .mem_write(amo_mem_write),           // Control signal for memory write
+    .locked_address(locked_address),
+    .lock(lock),
+    .address_to_lock(dmem_addr_holder)
+);
 
 
 endmodule
