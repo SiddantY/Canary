@@ -3,40 +3,175 @@ module fpga_mem_controller(
     input   logic rst,
 
     // Caches -> Controller
-    // input logic   [31:0]      bmem_addr,
-    // input logic               bmem_read,
-    // input logic               bmem_write,
-    // input logic   [63:0]      bmem_wdata,
+    input logic   [31:0]      bmem_addr,
+    input logic               bmem_read,
+    input logic               bmem_write,
+    input logic   [63:0]      bmem_wdata,
     
-    // // Controller -> Caches
-    // output logic               bmem_ready,
-    // output logic   [31:0]      bmem_raddr,
-    // output logic   [63:0]      bmem_rdata,
-    // output logic               bmem_rvalid,
+    // Controller -> Caches
+    output logic               bmem_ready,
+    output logic   [31:0]      bmem_raddr,
+    output logic   [63:0]      bmem_rdata,
+    output logic               bmem_rvalid,
 
     // Memory -> Controller
-    input logic [63:0] address_data_bus_m_to_c,
+    input logic [31:0] address_data_bus_m_to_c,
     input logic resp_m_to_c,
 
     // Controller -> Memory
-    output logic [63:0] address_data_bus_c_to_m,
+    output logic [31:0] address_data_bus_c_to_m,
     output logic address_on_c_to_m,
     output logic data_on_c_to_m,
     output logic read_en_c_to_m,
     output logic write_en_c_to_m
 );
 
-
+    enum logic [4:0]{
+        IDLE,
+        READ_ADDR,
+        READ_DATA_1,
+        READ_DATA_2,
+        READ_DONE,
+        WRITE_ADDR,
+        WRITE_DATA_1,
+        WRITE_DATA_2,
+        WRITE_DONE
+    } state, state_next;
+    logic wburst_counter, write_addr, write_data;
+    logic rburst_counter, read_addr, read_data;
     always_ff @(posedge clk) begin
         if(rst) begin
-           address_data_bus_c_to_m <= 64'hECEBCAFEDEADBEEF;
-           address_on_c_to_m <= 1'b0;
-           data_on_c_to_m <= 1'b0;
-           read_en_c_to_m <= 1'b0;
-           write_en_c_to_m <= 1'b0;
+            address_data_bus_c_to_m <= 64'hECEBCAFEDEADBEEF;
+            address_on_c_to_m <= 1'b0;
+            data_on_c_to_m <= 1'b0;
+            read_en_c_to_m <= 1'b0;
+            write_en_c_to_m <= 1'b0;
+            state <= '0;
+        end else begin
+            if(write_addr) begin
+                address_data_bus_c_to_m <= bmem_addr;
+                address_on_c_to_m <= 1'b1;
+                data_on_c_to_m <= 1'b0;
+                read_en_c_to_m <= 1'b0;
+                write_en_c_to_m <= 1'b1;
+            end else if(write_data) begin
+                address_data_bus_c_to_m <= bmem_wdata[0*wburst_counter +: 32];
+                address_on_c_to_m <= 1'b0;
+                data_on_c_to_m <= 1'b1;
+                read_en_c_to_m <= 1'b0;
+                write_en_c_to_m <= 1'b1;
+            end else if(read_addr) begin
+                address_data_bus_c_to_m <= bmem_addr;
+                address_on_c_to_m <= 1'b1;
+                data_on_c_to_m <= 1'b0;
+                read_en_c_to_m <= 1'b1;
+                write_en_c_to_m <= 1'b0;
+            end else if(read_data && resp_m_to_c) begin
+                bmem_rdata[0*rburst_counter +: 32] <= address_data_bus_m_to_c[0*rburst_counter +: 32];
+                bmem_addr <= address_on_c_to_m;
+                address_on_c_to_m <= 1'b0;
+                data_on_c_to_m <= 1'b1;
+                read_en_c_to_m <= 1'b1;
+                write_en_c_to_m <= 1'b0;
+            end else begin
+                address_data_bus_c_to_m <= 64'hECEBCAFEDEADBEEF;
+                address_on_c_to_m <= 1'b0;
+                data_on_c_to_m <= 1'b0;
+                read_en_c_to_m <= 1'b0;
+                write_en_c_to_m <= 1'b0;
+            end
+
+        state <= state_next;
         end
     end
 
+    always_comb begin
+        state_next = IDLE;
+        wburst_counter = 1'b0;
+        write_addr = 1'b0;
+        write_data = 1'b0;
+        rburst_counter = 1'b0;
+        read_addr = 1'b0;
+        read_data = 1'b0;
+        bmem_ready = 1'b0;
+
+        unique case(state)
+        IDLE: begin
+            bmem_ready = 1'b1;
+            if(bmem_read) begin
+                state_next = READ_ADDR;
+            end else if(bmem_write) begin
+                state_next = WRITE_ADDR;
+            end else begin  
+                state_next = state_next;
+            end
+        end
+        WRITE_ADDR: begin
+            write_addr = 1'b1;
+            if(resp_m_to_c) begin
+                state_next = WRITE_DATA_1;
+            end else begin
+                state_next = state_next;
+            end
+        end
+        WRITE_DATA_1: begin
+            write_data = 1'b1;
+            if(resp_m_to_c) begin
+                state_next = WRITE_DATA_2;
+            end else begin
+                state_next = state_next;
+            end
+        end
+        WRITE_DATA_2: begin
+            write_data = 1'b1;
+            wburst_counter = 1'b1;
+            if(resp_m_to_c) begin
+                state_next = WRITE_DONE;
+            end else begin
+                state_next = state_next;
+            end
+        end
+        WRITE_DONE: begin
+            write_data = 1'b0;
+            if(resp_m_to_c) begin//write_resp_chan signaling write transaction is finished 
+                state_next = IDLE;
+            end else begin
+                state_next = state_next; 
+            end
+        end
+        READ_ADDR: begin
+            read_addr = 1'b1;
+            if(resp_m_to_c) begin
+                state_next = READ_DATA_1;
+            end else begin
+                state_next = state_next; 
+            end
+        end
+        READ_DATA_1: begin
+            read_data = 1'b1;
+            if(resp_m_to_c) begin
+                state_next = READ_DATA_2;
+            end else begin
+                state_next = state_next;
+            end
+        end
+        READ_DATA_2: begin
+            read_data = 1'b1;
+            rburst_counter = 1'b1;
+            if(resp_m_to_c) begin
+                bmem_rvalid = 1'b1;
+                state_next = READ_DONE;
+            end else begin
+                state_next = state_next;
+            end
+        end
+        READ_DONE: begin
+            read_data = 1'b0;
+            state_next = IDLE;
+        end
+        endcase
+
+    end    
     
 
 
