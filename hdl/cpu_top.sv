@@ -116,6 +116,10 @@ memory memory_unit(
     .ooo_dmem_wdata(ooo_dmem_wdata),
     .ooo_dmem_resp(ooo_dmem_resp),
 
+    .ooo_locked_address('0),
+    .ooo_lock('0),
+    .ooo_amo('0),
+
     .ppl_imem_addr(ppl_imem_addr),
     .ppl_imem_rmask(ppl_imem_rmask),
     .ppl_imem_rdata(ppl_imem_rdata),
@@ -130,7 +134,6 @@ memory memory_unit(
 
     .ppl_locked_address(ppl_locked_address),
     .ppl_lock(ppl_lock),
-
     .ppl_amo(ppl_amo),
 
     .bmem_addr(bmem_addr),

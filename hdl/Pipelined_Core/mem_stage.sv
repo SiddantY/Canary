@@ -20,7 +20,7 @@ import rv32i_types::*;
     output  logic   [31:0]      locked_address,
     output  logic               lock,
 
-    output  logic               amo,
+    output  logic               amo
 );
 
 logic amo_valid;
@@ -79,7 +79,7 @@ always_latch
                     begin
                         dstall = 1'b0;
                     end
-                else if(atom_done)
+                else if(amo_done)
                     begin
                         dstall = 1'b0;
                     end
@@ -219,7 +219,7 @@ always_comb
 always_comb
     begin : next_reg_setting
 
-        mem_wb_reg_next.rd_v = opcode == op_b_atom ? mem_data_out : ex_mem_reg.alu_result;
+        mem_wb_reg_next.rd_v = ex_mem_reg.opcode == op_b_atom ? mem_data_out : ex_mem_reg.alu_result;
         mem_wb_reg_next.rd_s = ex_mem_reg.rd_s;
         mem_wb_reg_next.regf_we = ex_mem_reg.regf_we;
         mem_wb_reg_next.mem_read = ex_mem_reg.mem_read;
@@ -247,7 +247,8 @@ always_comb
 
 always_comb begin
 
-    atom_valid = ex_mem_reg.opcode == op_b_atom ? 1'b1 : 1'b0;
+    amo_valid = ex_mem_reg.opcode == op_b_atom ? 1'b1 : 1'b0;
+    amo_funct = ex_mem_reg.funct7;
 
 end
 

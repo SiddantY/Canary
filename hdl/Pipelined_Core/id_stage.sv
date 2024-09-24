@@ -322,6 +322,8 @@ always_comb
 
         id_ex_reg_next.regf_we = writeback;
 
+        id_ex_reg_next.funct7 = funct7;
+
         id_ex_reg_next.mem_read = mem_read;
         id_ex_reg_next.mem_write = mem_write;
         id_ex_reg_next.branch = branch;

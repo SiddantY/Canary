@@ -57,7 +57,12 @@ import rv32i_types::*;
     output  logic           in_idle,
 
 
-    input   logic           flush_latch
+    input   logic           flush_latch,
+
+    input   logic   [31:0]  this_address_locked_by_others,
+    input   logic   [31:0]  this_address_locked_by_you,
+
+    output  logic           unlock
 
 );
 
@@ -299,13 +304,22 @@ always_comb begin : state_signals
     bus_command_address = '0;
     bus_command_command = '0;
 
+    // atomics
+
+    unlock = 1'b1;
+
     case (state)
 
         idle: in_idle = 1'b1; 
 
         compare : begin
             
-            if (cache_hit && tag_out[way_index][25:24] != mesi_i) begin
+            if(ufp_addr == this_address_locked_by_others) begin
+                
+                ufp_resp = 1'b1;
+                ufp_rdata = 32'hFFFF_FFFF;
+
+            end else if (cache_hit && tag_out[way_index][25:24] != mesi_i) begin
 
                 if (ufp_rmask != 4'b0) begin
 
@@ -332,6 +346,8 @@ always_comb begin : state_signals
                     endcase
                     
                     t_write_en[way_index] = 1'b1;
+
+                    if(ufp_addr == this_address_locked_by_you) unlock = 1'b1;
 
                 end
 

@@ -165,6 +165,8 @@ package rv32i_types;
 
         bit [31:0]  jalr_imm;
         bit [31:0]  jal_imm;
+
+        bit [6:0]   funct7;
         
         rvfi_data_t rvfi;
     } id_ex_reg_t;
@@ -176,6 +178,10 @@ package rv32i_types;
         bit         regf_we;
         bit         mem_read;
         bit         mem_write;
+
+        bit [6:0]   opcode;
+
+        bit [6:0]   funct7;
 
         bit [31:0]  alu_result;
         bit [31:0]  rs2_v;
@@ -191,6 +197,8 @@ package rv32i_types;
     typedef struct packed {
         
         bit         regf_we;
+
+        bit [6:0]   funct7;
 
         bit [4:0]   rd_s;
 

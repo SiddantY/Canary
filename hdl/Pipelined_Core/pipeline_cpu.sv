@@ -20,7 +20,7 @@ import rv32i_types::*;
     output  logic   [31:0]  locked_address,
     output  logic           lock,
 
-    output  logic           amo,
+    output  logic           amo
 
     // Single memory port connection when caches are integrated into design (CP3 and after)
     

@@ -127,6 +127,10 @@ always_comb
         ex_mem_reg_next.rd_s = id_ex_reg.rd_s;
         ex_mem_reg_next.funct3 = id_ex_reg.funct3;
 
+        ex_mem_reg_next.opcode = id_ex_reg.opcode;
+
+        ex_mem_reg_next.funct7 = id_ex_reg.funct7;
+
         // rvfi signals
         ex_mem_reg_next.rvfi.monitor_valid = id_ex_reg.rvfi.monitor_valid;
         ex_mem_reg_next.rvfi.monitor_order = id_ex_reg.rvfi.monitor_order; 

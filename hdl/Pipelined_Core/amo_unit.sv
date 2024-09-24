@@ -30,15 +30,15 @@ module amo_unit (
         store,
         done,
         lwr,
-        swc, 
+        swc 
     } state, next_state;
 
     logic [31:0] loaded_value, computed_value;
 
     // State transition logic
-    always_ff @(posedge clk or posedge reset) begin
+    always_ff @(posedge clk) begin
 
-        if (reset) begin
+        if (rst) begin
 
             state <= idle;
             loaded_value <= 32'b0;
@@ -73,9 +73,9 @@ module amo_unit (
 
     always_comb begin
 
-        mem_read = 0;
-        mem_write = 0;
-        amo_done = 0;
+        mem_read = 1'b0;
+        mem_write = 1'b0;
+        amo_done = 1'b0;
         mem_data_out = 32'b0;
         next_state = state;
 
@@ -85,20 +85,20 @@ module amo_unit (
         case (state)
             idle: begin
                 if (amo_valid) begin
-                    mem_read = 1;
+                    mem_read = 1'b1;
                     next_state = load;
                 end
             end
 
             load: begin
-                mem_read = 1;
+                mem_read = 1'b1;
                 lock = 1'b1;
                 locked_address = address_to_lock;
                 if (mem_resp) next_state = calc;
             end
 
-            lrw : begin
-                mem_read = 1;
+            lwr : begin
+                mem_read = 1'b1;
                 lock = 1'b1;
                 locked_address = address_to_lock;
                 if(mem_resp) next_state = done;
@@ -109,19 +109,19 @@ module amo_unit (
             end
 
             store: begin
-                mem_write = 1;
+                mem_write = 1'b1;
                 mem_data_out = computed_value;
                 if (mem_resp) next_state = done;
             end
 
             swc : begin
-                mem_write = 1;
+                mem_write = 1'b1;
                 mem_data_out = computed_value;
                 if (mem_resp) next_state = done;
             end
 
             done: begin
-                amo_done = 1;
+                amo_done = 1'b1;
                 next_state = idle;
             end
 

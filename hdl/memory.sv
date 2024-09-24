@@ -20,6 +20,10 @@ module memory(
     input   logic   [31:0]  ooo_dmem_wdata,
     output  logic           ooo_dmem_resp,
 
+    input   logic   [31:0]  ooo_locked_address,
+    input   logic           ooo_amo,
+    input   logic           ooo_lock,
+
     input   logic   [31:0]  ppl_imem_addr,
     input   logic   [3:0]   ppl_imem_rmask,
     output  logic   [31:0]  ppl_imem_rdata,
@@ -33,9 +37,8 @@ module memory(
     output  logic           ppl_dmem_resp,
 
     input   logic   [31:0]  ppl_locked_address,
+    input   logic           ppl_amo,
     input   logic           ppl_lock,
-
-    input   logic           amo,
 
     output logic   [31:0]   bmem_addr,
     output logic            bmem_read,
@@ -114,7 +117,15 @@ end
 
 // AMO STUFF
 logic ppl_unlock;
+logic ooo_unlock;
 logic [31:0] this_address_locked_by_ppl;
+logic [31:0] this_address_locked_by_ooo;
+
+// logic ooo_lock;
+// logic ppl_lock;
+
+// assign ooo_lock = ((ooo_amo) && ooo_dmem_rmask != '0) ? 1'b1 : 1'b0;
+// assign ppl_lock = ((ppl_amo) && ppl_dmem_rmask != '0) ? 1'b1 : 1'b0;
 
 // Lock Table -- needs to be revised to 16 address probably -- ROB size
 lock_table lock_table_1(
@@ -122,17 +133,17 @@ lock_table lock_table_1(
     .clk(clk),
     .rst(rst),
 
-    .ooo_locked_address('0),
-    .ooo_lock('0),
+    .ooo_locked_address(ooo_locked_address),
+    .ooo_lock(ooo_lock),
 
-    .ooo_unlock('0),
+    .ooo_unlock(ooo_unlock),
 
     .ppl_locked_address(ppl_locked_address),
     .ppl_lock(ppl_lock),
 
     .ppl_unlock(ppl_unlock),
 
-    .this_address_locked_by_ooo(),
+    .this_address_locked_by_ooo(this_address_locked_by_ooo),
     .this_address_locked_by_ppl(this_address_locked_by_ppl)
 );
 
@@ -605,7 +616,14 @@ snoopbus_d_cache ooo_d_cache
     .in_idle(),
 
 
-    .flush_latch()
+    .flush_latch(),
+
+    .amo(ooo_amo),
+
+    .this_address_locked_by_you(this_address_locked_by_ooo),
+    .this_address_locked_by_others(this_address_locked_by_ppl),
+
+    .unlock(ooo_unlock)
 
 );
 
@@ -677,7 +695,14 @@ snoopbus_d_cache ppl_d_cache
     .in_idle(),
 
 
-    .flush_latch()
+    .flush_latch(),
+
+    .amo(ppl_amo),
+
+    .this_address_locked_by_you(this_address_locked_by_ppl),
+    .this_address_locked_by_others(this_address_locked_by_ooo),
+
+    .unlock(ppl_unlock)
 
 );
 
