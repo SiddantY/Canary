@@ -24,8 +24,8 @@ module top_tb;
     // random_tb mem(.itf_i(mem_itf_i), .itf_d(mem_itf_d));
 
     // Single memory port connection when caches are integrated into design (CP3 and after)
-    banked_mem_itf bmem_itf(.*);
-    banked_memory banked_memory(.itf(bmem_itf));
+    // banked_mem_itf bmem_itf(.*);
+    // banked_memory banked_memory(.itf(bmem_itf));
 
     // FPGA BRAM
     fpga_bram_itf fpga_bram_itf(.*);
@@ -112,14 +112,14 @@ module top_tb;
         // .dmem_resp      (mem_itf_d.resp)
 
         // Single memory port connection when caches are integrated into design (CP3 and after)
-        .bmem_addr(bmem_itf.addr),
-        .bmem_read(bmem_itf.read),
-        .bmem_write(bmem_itf.write),
-        .bmem_wdata(bmem_itf.wdata),
-        .bmem_ready(bmem_itf.ready),
-        .bmem_raddr(bmem_itf.raddr),
-        .bmem_rdata(bmem_itf.rdata),
-        .bmem_rvalid(bmem_itf.rvalid),
+        // .bmem_addr(bmem_itf.addr),
+        // .bmem_read(bmem_itf.read),
+        // .bmem_write(bmem_itf.write),
+        // .bmem_wdata(bmem_itf.wdata),
+        // .bmem_ready(bmem_itf.ready),
+        // .bmem_raddr(bmem_itf.raddr),
+        // .bmem_rdata(bmem_itf.rdata),
+        // .bmem_rvalid(bmem_itf.rvalid),
 
         // Memory -> Controller
         .address_data_bus_m_to_c(fpga_bram_itf.address_data_bus_m_to_c),

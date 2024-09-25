@@ -15,7 +15,8 @@ module fpga_bram #(
     logic store_data_1;
     logic clear_data;
     logic enable_memory;
-    logic rburst_counter;
+    logic [31:0] rburst_counter;
+    logic sub_rburst_counter;
 
     task automatic reset();
         automatic string memfile = {getenv("ECE411_MEMLST"), "_8.lst"};
@@ -31,13 +32,19 @@ module fpga_bram #(
         reset();
     end
 
-    typedef enum logic [2:0] {  
+    typedef enum logic [4:0] {  
         idle,
         read_address,
         read_data,
         read_data_1,
         read_data_from_memory,
         read_data_from_memory2,
+        read_data_from_memory3,
+        read_data_from_memory4,
+        read_data_from_memory5,
+        read_data_from_memory6,
+        read_data_from_memory7,
+        read_data_from_memory8,
         respond
     } state_t;
 
@@ -59,7 +66,8 @@ module fpga_bram #(
         clear_data = 1'b0;
         enable_memory = 1'b0;
         itf.resp_m_to_c = 1'b0;
-        rburst_counter = 1'b0;
+        rburst_counter = 32'd0;
+        sub_rburst_counter = 1'b0;
         unique case(state)
             idle: begin
                 clear_address = 1'b1;
@@ -106,15 +114,62 @@ module fpga_bram #(
             end
             read_data_from_memory: begin
                 enable_memory = 1'b1;
-                rburst_counter = 1'b0;
+                rburst_counter = 32'd0;
+                sub_rburst_counter = 1'b0;
                 next_state = read_data_from_memory2;
             end
             read_data_from_memory2: begin
                 enable_memory = 1'b1;
                 itf.resp_m_to_c = 1'b1;
-                rburst_counter = 1'b1;
+                rburst_counter = 32'd0;
+                sub_rburst_counter = 1'b1;
+                next_state = read_data_from_memory3;
+            end
+            read_data_from_memory3: begin
+                enable_memory = 1'b1;
+                itf.resp_m_to_c = 1'b1;
+                rburst_counter = 32'd1;
+                sub_rburst_counter = 1'b0;
+                next_state = read_data_from_memory4;
+            end
+            read_data_from_memory4: begin
+                enable_memory = 1'b1;
+                itf.resp_m_to_c = 1'b1;
+                rburst_counter = 32'd1;
+                sub_rburst_counter = 1'b1;
+                next_state = read_data_from_memory5;
+            end
+
+            read_data_from_memory5: begin
+                enable_memory = 1'b1;
+                itf.resp_m_to_c = 1'b1;
+                rburst_counter = 32'd2;
+                sub_rburst_counter = 1'b0;
+                next_state = read_data_from_memory6;
+            end
+            read_data_from_memory6: begin
+                enable_memory = 1'b1;
+                itf.resp_m_to_c = 1'b1;
+                rburst_counter = 32'd2;
+                sub_rburst_counter = 1'b1;
+                next_state = read_data_from_memory7;
+            end
+
+            read_data_from_memory7: begin
+                enable_memory = 1'b1;
+                itf.resp_m_to_c = 1'b1;
+                rburst_counter = 32'd3;
+                sub_rburst_counter = 1'b0;
+                next_state = read_data_from_memory8;
+            end
+            read_data_from_memory8: begin
+                enable_memory = 1'b1;
+                itf.resp_m_to_c = 1'b1;
+                rburst_counter = 32'd3;
+                sub_rburst_counter = 1'b1;
                 next_state = respond;
             end
+
             respond: begin
                 itf.resp_m_to_c = 1'b1;
                 next_state = idle;
@@ -152,7 +207,7 @@ module fpga_bram #(
             if(itf.write_en_c_to_m) begin
                 internal_memory_array[addra / 32'd8] <= dina;
             end else if(itf.read_en_c_to_m)begin
-                itf.address_data_bus_m_to_c <= internal_memory_array[addra / 32'd8][32*rburst_counter +: 32];
+                itf.address_data_bus_m_to_c <= internal_memory_array[(addra + (32'd8 *rburst_counter)) / 32'd8][32*sub_rburst_counter +: 32];
             end else begin
                 itf.address_data_bus_m_to_c <= 'x;
             end

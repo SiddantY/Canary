@@ -31,6 +31,12 @@ module fpga_mem_controller(
         READ_ADDR,
         READ_DATA_1,
         READ_DATA_2,
+        READ_DATA_3,
+        READ_DATA_4,
+        READ_DATA_5,
+        READ_DATA_6,
+        READ_DATA_7,
+        READ_DATA_8,
         READ_DONE,
         WRITE_ADDR,
         WRITE_DATA_1,
@@ -39,7 +45,8 @@ module fpga_mem_controller(
     } state, state_next;
 
     logic wburst_counter, write_addr, write_data;
-    logic rburst_counter, read_addr, read_data;
+    logic read_addr, read_data;
+    logic [31:0] rburst_counter;
     logic latch_bmem_rdata, unlatch_bmem_rdata;
     
     always_ff @(posedge clk) begin
@@ -101,7 +108,7 @@ module fpga_mem_controller(
         wburst_counter = 1'b0;
         write_addr = 1'b0;
         write_data = 1'b0;
-        rburst_counter = 1'b0;
+        rburst_counter = 32'd0;
         read_addr = 1'b0;
         read_data = 1'b0;
         bmem_ready = 1'b0;
@@ -173,7 +180,68 @@ module fpga_mem_controller(
         end
         READ_DATA_2: begin
             read_data = 1'b1;
-            rburst_counter = 1'b1;
+            rburst_counter = 32'd1;
+            if(resp_m_to_c) begin
+                // bmem_rvalid = 1'b1;
+                state_next = READ_DATA_3;
+            end else begin
+                state_next = state_next;
+            end
+        end
+        READ_DATA_3: begin
+            read_data = 1'b1;
+            rburst_counter = 32'd0;
+            if(resp_m_to_c) begin
+                bmem_rvalid = 1'b1;
+                state_next = READ_DATA_4;
+            end else begin
+                state_next = state_next;
+            end
+        end
+        READ_DATA_4: begin
+            read_data = 1'b1;
+            rburst_counter = 32'd1;
+            if(resp_m_to_c) begin
+                // bmem_rvalid = 1'b1;
+                state_next = READ_DATA_5;
+            end else begin
+                state_next = state_next;
+            end
+        end
+        READ_DATA_5: begin
+            read_data = 1'b1;
+            rburst_counter = 32'd0;
+            if(resp_m_to_c) begin
+                bmem_rvalid = 1'b1;
+                state_next = READ_DATA_6;
+            end else begin
+                state_next = state_next;
+            end
+        end
+        READ_DATA_6: begin
+            read_data = 1'b1;
+            rburst_counter = 32'd1;
+            if(resp_m_to_c) begin
+                // bmem_rvalid = 1'b1;
+                state_next = READ_DATA_7;
+            end else begin
+                state_next = state_next;
+            end
+        end
+
+        READ_DATA_7: begin
+            read_data = 1'b1;
+            rburst_counter = 32'd0;
+            if(resp_m_to_c) begin
+                bmem_rvalid = 1'b1;
+                state_next = READ_DATA_8;
+            end else begin
+                state_next = state_next;
+            end
+        end
+        READ_DATA_8: begin
+            read_data = 1'b1;
+            rburst_counter = 32'd1;
             if(resp_m_to_c) begin
                 // bmem_rvalid = 1'b1;
                 state_next = READ_DONE;
@@ -181,6 +249,7 @@ module fpga_mem_controller(
                 state_next = state_next;
             end
         end
+
         READ_DONE: begin
             bmem_rvalid = 1'b1;
             read_data = 1'b0;
