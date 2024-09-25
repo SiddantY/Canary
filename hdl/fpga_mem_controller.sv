@@ -55,6 +55,7 @@ module fpga_mem_controller(
                 address_data_bus_c_to_m <= bmem_addr;
             end else if(unlatch_bmem_rdata) begin
                 address_data_bus_c_to_m <= 'x;
+                bmem_rdata <= 'x;
             end else if(write_addr) begin
                 // address_data_bus_c_to_m <= bmem_addr;
                 address_on_c_to_m <= 1'b1;
@@ -69,18 +70,21 @@ module fpga_mem_controller(
                 write_en_c_to_m <= 1'b1;
             end else if(read_addr) begin
                 // address_data_bus_c_to_m <= bmem_addr;
-                bmem_raddr <= bmem_addr;
+                bmem_raddr <= address_data_bus_c_to_m;
                 address_on_c_to_m <= 1'b1;
                 data_on_c_to_m <= 1'b0;
                 read_en_c_to_m <= 1'b1;
                 write_en_c_to_m <= 1'b0;
-            end else if(read_data && resp_m_to_c) begin
-                bmem_rdata[0*rburst_counter +: 32] <= address_data_bus_m_to_c[32*rburst_counter +: 32];
+            end else if(read_data) begin
+                if(resp_m_to_c) begin
+                    bmem_rdata[32*rburst_counter +: 32] <= address_data_bus_m_to_c;
+                end
                 address_on_c_to_m <= 1'b0;
                 data_on_c_to_m <= 1'b1;
                 read_en_c_to_m <= 1'b1;
                 write_en_c_to_m <= 1'b0;
             end else begin
+                bmem_rdata <= 'x;
                 address_data_bus_c_to_m <= 'x;
                 address_on_c_to_m <= 1'b0;
                 data_on_c_to_m <= 1'b0;
@@ -161,7 +165,7 @@ module fpga_mem_controller(
         READ_DATA_1: begin
             read_data = 1'b1;
             if(resp_m_to_c) begin
-                bmem_rvalid = 1'b1;
+                // bmem_rvalid = 1'b1;
                 state_next = READ_DATA_2;
             end else begin
                 state_next = state_next;
@@ -171,13 +175,14 @@ module fpga_mem_controller(
             read_data = 1'b1;
             rburst_counter = 1'b1;
             if(resp_m_to_c) begin
-                bmem_rvalid = 1'b1;
+                // bmem_rvalid = 1'b1;
                 state_next = READ_DONE;
             end else begin
                 state_next = state_next;
             end
         end
         READ_DONE: begin
+            bmem_rvalid = 1'b1;
             read_data = 1'b0;
             unlatch_bmem_rdata = 1'b1;
             state_next = IDLE;

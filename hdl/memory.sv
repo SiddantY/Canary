@@ -157,7 +157,7 @@ always_ff @(posedge clk) begin : round_robin_scheduling_for_main_memory_access
 end : round_robin_scheduling_for_main_memory_access
 
 always_comb begin : next_state_for_round_robin_scheduler
-
+    next_state = state;
     case (state)
         service_ooo_i_cache : begin
             if(ooo_i_dfp_read) next_state = servicing;

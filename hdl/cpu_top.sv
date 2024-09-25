@@ -2,15 +2,15 @@ module cpu_top(
     input   logic clk,
     input   logic rst,
 
-    // output logic   [31:0]      bmem_addr,
-    // output logic               bmem_read,
-    // output logic               bmem_write,
-    // output logic   [63:0]      bmem_wdata,
+    output logic   [31:0]      bmem_addr,
+    output logic               bmem_read,
+    output logic               bmem_write,
+    output logic   [63:0]      bmem_wdata,
     
-    // input logic               bmem_ready,
-    // input logic   [31:0]      bmem_raddr,
-    // input logic   [63:0]      bmem_rdata,
-    // input logic               bmem_rvalid,
+    input logic               bmem_ready,
+    input logic   [31:0]      bmem_raddr,
+    input logic   [63:0]      bmem_rdata,
+    input logic               bmem_rvalid,
 
     // Memory -> Controller
     input logic [31:0] address_data_bus_m_to_c,
@@ -54,15 +54,15 @@ logic           ppl_dmem_resp;
 logic flush, jump_en, jalr_done;
 
 
-logic   [31:0]      bmem_addr;
-logic               bmem_read;
-logic               bmem_write;
-logic   [63:0]      bmem_wdata;
+// logic   [31:0]      copy_bmem_addr;
+// logic               copy_bmem_read;
+// logic               copy_bmem_write;
+// logic   [63:0]      copy_bmem_wdata;
 
-logic               bmem_ready;
-logic   [31:0]      bmem_raddr;
-logic   [63:0]      bmem_rdata;
-logic               bmem_rvalid;
+logic               copy_bmem_ready;
+logic   [31:0]      copy_bmem_raddr;
+logic   [63:0]      copy_bmem_rdata;
+logic               copy_bmem_rvalid;
 
 
 
@@ -163,10 +163,10 @@ fpga_mem_controller fpga_mem_controller(
     .bmem_wdata(bmem_wdata),
 
     // Controller -> Caches
-    .bmem_ready(bmem_ready),
-    .bmem_raddr(bmem_raddr),
-    .bmem_rdata(bmem_rdata),
-    .bmem_rvalid(bmem_rvalid),
+    .bmem_ready(copy_bmem_ready),
+    .bmem_raddr(copy_bmem_raddr),
+    .bmem_rdata(copy_bmem_rdata),
+    .bmem_rvalid(copy_bmem_rvalid),
 
     // Memory -> Controller
     .address_data_bus_m_to_c(address_data_bus_m_to_c),

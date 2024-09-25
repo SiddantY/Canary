@@ -1,12 +1,12 @@
 // Single Port RAM with Native Interface
 module fpga_bram #(
-    parameter   DATA_WIDTH = 64, // 64 Bits
-    parameter   ADDRESS_WIDTH = 32 // 2^32 - 1 = 4,294,967,295 elements
+    parameter   DATA_WIDTH = 64,
+    parameter   ADDRESS_WIDTH = 32 
 )(
     fpga_bram_itf.mem itf
 );
 
-    logic [DATA_WIDTH-1:0] internal_memory_array [logic [(2**27)-1:0]];
+    logic [DATA_WIDTH-1:0] internal_memory_array [logic [ADDRESS_WIDTH-1:0]];
     logic [DATA_WIDTH-1:0] dina;
     logic [ADDRESS_WIDTH-1:0] addra;
     logic store_address;
@@ -15,6 +15,7 @@ module fpga_bram #(
     logic store_data_1;
     logic clear_data;
     logic enable_memory;
+    logic rburst_counter;
 
     task automatic reset();
         automatic string memfile = {getenv("ECE411_MEMLST"), "_8.lst"};
@@ -35,7 +36,8 @@ module fpga_bram #(
         read_address,
         read_data,
         read_data_1,
-        read_respond,
+        read_data_from_memory,
+        read_data_from_memory2,
         respond
     } state_t;
 
@@ -57,6 +59,7 @@ module fpga_bram #(
         clear_data = 1'b0;
         enable_memory = 1'b0;
         itf.resp_m_to_c = 1'b0;
+        rburst_counter = 1'b0;
         unique case(state)
             idle: begin
                 clear_address = 1'b1;
@@ -74,10 +77,8 @@ module fpga_bram #(
                     itf.resp_m_to_c = 1'b1;
                     if(itf.write_en_c_to_m) begin
                         next_state = read_data;
-                    end else if (itf.read_en_c_to_m) begin
-                        next_state = read_respond;
                     end else begin
-                        next_state = respond; // Move to perform a read operation and respond
+                        next_state = read_data_from_memory; // Move to perform a read operation and respond
                     end
                 end else begin
                     next_state = read_address; // Maintain state until address is on bus
@@ -103,14 +104,19 @@ module fpga_bram #(
                     next_state = read_data_1;
                 end
             end
-            read_respond: begin
-                itf.resp_m_to_c = 1'b1;
+            read_data_from_memory: begin
                 enable_memory = 1'b1;
+                rburst_counter = 1'b0;
+                next_state = read_data_from_memory2;
+            end
+            read_data_from_memory2: begin
+                enable_memory = 1'b1;
+                itf.resp_m_to_c = 1'b1;
+                rburst_counter = 1'b1;
                 next_state = respond;
-            end   
+            end
             respond: begin
                 itf.resp_m_to_c = 1'b1;
-                enable_memory = 1'b1;
                 next_state = idle;
             end
             default: begin
@@ -144,12 +150,14 @@ module fpga_bram #(
     always_ff @(posedge itf.clk) begin
         if(enable_memory) begin
             if(itf.write_en_c_to_m) begin
-                internal_memory_array[addra] <= dina;
+                internal_memory_array[addra / 32'd8] <= dina;
             end else if(itf.read_en_c_to_m)begin
-                itf.address_data_bus_m_to_c <= internal_memory_array[addra];
+                itf.address_data_bus_m_to_c <= internal_memory_array[addra / 32'd8][32*rburst_counter +: 32];
             end else begin
                 itf.address_data_bus_m_to_c <= 'x;
             end
+        end else begin
+            itf.address_data_bus_m_to_c <= 'x;
         end
     end
 
