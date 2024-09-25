@@ -5,9 +5,9 @@ module top_tb;
     timeunit 1ns;
     timeprecision 1ps;
 
-    int fpga_clock_half_period_ps = getenv("ECE411_FPGA_CLOCK_PERIOD_PS").atoi() / 2;
-    bit fpga_clk;
-    always #(fpga_clock_half_period_ps) fpga_clk = ~ fpga_clk;
+    // int fpga_clock_half_period_ps = getenv("ECE411_FPGA_CLOCK_PERIOD_PS").atoi() / 2;
+    // bit fpga_clk;
+    // always #(fpga_clock_half_period_ps) fpga_clk = ~ fpga_clk;
     
     int clock_half_period_ps = getenv("ECE411_CLOCK_PERIOD_PS").atoi() / 2;
     bit clk;
@@ -37,14 +37,6 @@ module top_tb;
     mon_itf pipeline_mon_itf(.*);
     monitor pipeline_monitor(.itf(pipeline_mon_itf));
 
-
-    // Controller -> Memory
-    logic [31:0] address_data_bus_c_to_m;
-    logic address_on_c_to_m;
-    logic data_on_c_to_m;
-    logic read_en_c_to_m;
-    logic write_en_c_to_m;
-    logic resp_c_to_m;
 
     // pipeline_cpu dut(
     //     .clk            (clk),
@@ -120,32 +112,25 @@ module top_tb;
         // .dmem_resp      (mem_itf_d.resp)
 
         // Single memory port connection when caches are integrated into design (CP3 and after)
-        .bmem_addr(bmem_itf.addr),
-        .bmem_read(bmem_itf.read),
-        .bmem_write(bmem_itf.write),
-        .bmem_wdata(bmem_itf.wdata),
-        .bmem_ready(bmem_itf.ready),
-        .bmem_raddr(bmem_itf.raddr),
-        .bmem_rdata(bmem_itf.rdata),
-        .bmem_rvalid(bmem_itf.rvalid),
+        // .bmem_addr(bmem_itf.addr),
+        // .bmem_read(bmem_itf.read),
+        // .bmem_write(bmem_itf.write),
+        // .bmem_wdata(bmem_itf.wdata),
+        // .bmem_ready(bmem_itf.ready),
+        // .bmem_raddr(bmem_itf.raddr),
+        // .bmem_rdata(bmem_itf.rdata),
+        // .bmem_rvalid(bmem_itf.rvalid),
 
         // Memory -> Controller
-        .address_data_bus_m_to_c(fpga_bram_itf.douta),
-        .address_on_m_to_c(1'b0), // Memory should not send addresses
-        .data_on_m_to_c(1'b1), // Memory only sends data
-        .read_en_m_to_c(1'b0),
-        .write_en_m_to_c(1'b0),
-        .resp_m_to_c(1'b0),
-
-        
+        .address_data_bus_m_to_c(fpga_bram_itf.address_data_bus_m_to_c),
+        .resp_m_to_c(fpga_bram_itf.resp_m_to_c),
 
         // Controller -> Memory
-        .address_data_bus_c_to_m({{32{1'b0}},fpga_bram_itf.addra[31:0]}),
-        .address_on_c_to_m(fpga_bram_itf.ena),
-        .data_on_c_to_m(data_on_c_to_m),
-        .read_en_c_to_m(read_en_c_to_m),
-        .write_en_c_to_m(fpga_bram_itf.wea),
-        .resp_c_to_m(resp_c_to_m)
+        .address_data_bus_c_to_m(fpga_bram_itf.address_data_bus_c_to_m),
+        .address_on_c_to_m(fpga_bram_itf.address_on_c_to_m),
+        .data_on_c_to_m(fpga_bram_itf.data_on_c_to_m),
+        .read_en_c_to_m(fpga_bram_itf.read_en_c_to_m),
+        .write_en_c_to_m(fpga_bram_itf.write_en_c_to_m)
 
     );
 

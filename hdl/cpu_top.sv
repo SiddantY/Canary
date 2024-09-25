@@ -2,22 +2,22 @@ module cpu_top(
     input   logic clk,
     input   logic rst,
 
-    output logic   [31:0]      bmem_addr,
-    output logic               bmem_read,
-    output logic               bmem_write,
-    output logic   [63:0]      bmem_wdata,
+    // output logic   [31:0]      bmem_addr,
+    // output logic               bmem_read,
+    // output logic               bmem_write,
+    // output logic   [63:0]      bmem_wdata,
     
-    input logic               bmem_ready,
-    input logic   [31:0]      bmem_raddr,
-    input logic   [63:0]      bmem_rdata,
-    input logic               bmem_rvalid,
+    // input logic               bmem_ready,
+    // input logic   [31:0]      bmem_raddr,
+    // input logic   [63:0]      bmem_rdata,
+    // input logic               bmem_rvalid,
 
     // Memory -> Controller
-    input logic [63:0] address_data_bus_m_to_c,
+    input logic [31:0] address_data_bus_m_to_c,
     input logic resp_m_to_c,
 
     // Controller -> Memory
-    output logic [63:0] address_data_bus_c_to_m,
+    output logic [31:0] address_data_bus_c_to_m,
     output logic address_on_c_to_m,
     output logic data_on_c_to_m,
     output logic read_en_c_to_m,
@@ -52,6 +52,19 @@ logic   [31:0]  ppl_dmem_wdata;
 logic           ppl_dmem_resp;
 
 logic flush, jump_en, jalr_done;
+
+
+logic   [31:0]      bmem_addr;
+logic               bmem_read;
+logic               bmem_write;
+logic   [63:0]      bmem_wdata;
+
+logic               bmem_ready;
+logic   [31:0]      bmem_raddr;
+logic   [63:0]      bmem_rdata;
+logic               bmem_rvalid;
+
+
 
 ooo_cpu ooo(
     .clk            (clk),

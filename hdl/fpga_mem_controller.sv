@@ -37,44 +37,51 @@ module fpga_mem_controller(
         WRITE_DATA_2,
         WRITE_DONE
     } state, state_next;
+
     logic wburst_counter, write_addr, write_data;
     logic rburst_counter, read_addr, read_data;
+    logic latch_bmem_rdata, unlatch_bmem_rdata;
+    
     always_ff @(posedge clk) begin
         if(rst) begin
-            address_data_bus_c_to_m <= 64'hECEBCAFEDEADBEEF;
+            address_data_bus_c_to_m <= 'x;
             address_on_c_to_m <= 1'b0;
             data_on_c_to_m <= 1'b0;
             read_en_c_to_m <= 1'b0;
             write_en_c_to_m <= 1'b0;
-            state <= '0;
+            state <= IDLE;
         end else begin
-            if(write_addr) begin
+            if(latch_bmem_rdata) begin
                 address_data_bus_c_to_m <= bmem_addr;
+            end else if(unlatch_bmem_rdata) begin
+                address_data_bus_c_to_m <= 'x;
+            end else if(write_addr) begin
+                // address_data_bus_c_to_m <= bmem_addr;
                 address_on_c_to_m <= 1'b1;
                 data_on_c_to_m <= 1'b0;
                 read_en_c_to_m <= 1'b0;
                 write_en_c_to_m <= 1'b1;
             end else if(write_data) begin
-                address_data_bus_c_to_m <= bmem_wdata[0*wburst_counter +: 32];
-                address_on_c_to_m <= 1'b0;
+                address_data_bus_c_to_m <= bmem_wdata[32*wburst_counter +: 32];//not 1000% guranteed
                 data_on_c_to_m <= 1'b1;
+                address_on_c_to_m <= 1'b0;
                 read_en_c_to_m <= 1'b0;
                 write_en_c_to_m <= 1'b1;
             end else if(read_addr) begin
-                address_data_bus_c_to_m <= bmem_addr;
+                // address_data_bus_c_to_m <= bmem_addr;
+                bmem_raddr <= bmem_addr;
                 address_on_c_to_m <= 1'b1;
                 data_on_c_to_m <= 1'b0;
                 read_en_c_to_m <= 1'b1;
                 write_en_c_to_m <= 1'b0;
             end else if(read_data && resp_m_to_c) begin
-                bmem_rdata[0*rburst_counter +: 32] <= address_data_bus_m_to_c[0*rburst_counter +: 32];
-                bmem_addr <= address_on_c_to_m;
+                bmem_rdata[0*rburst_counter +: 32] <= address_data_bus_m_to_c[32*rburst_counter +: 32];
                 address_on_c_to_m <= 1'b0;
                 data_on_c_to_m <= 1'b1;
                 read_en_c_to_m <= 1'b1;
                 write_en_c_to_m <= 1'b0;
             end else begin
-                address_data_bus_c_to_m <= 64'hECEBCAFEDEADBEEF;
+                address_data_bus_c_to_m <= 'x;
                 address_on_c_to_m <= 1'b0;
                 data_on_c_to_m <= 1'b0;
                 read_en_c_to_m <= 1'b0;
@@ -86,7 +93,7 @@ module fpga_mem_controller(
     end
 
     always_comb begin
-        state_next = IDLE;
+        state_next = state;
         wburst_counter = 1'b0;
         write_addr = 1'b0;
         write_data = 1'b0;
@@ -94,12 +101,16 @@ module fpga_mem_controller(
         read_addr = 1'b0;
         read_data = 1'b0;
         bmem_ready = 1'b0;
-
-        unique case(state)
+        bmem_rvalid = 1'b0;
+        latch_bmem_rdata = 1'b0;
+        unlatch_bmem_rdata = 1'b0;
+        case(state)
         IDLE: begin
             bmem_ready = 1'b1;
             if(bmem_read) begin
                 state_next = READ_ADDR;
+                // Latch BMEM_ADDR
+                latch_bmem_rdata = 1'b1;
             end else if(bmem_write) begin
                 state_next = WRITE_ADDR;
             end else begin  
@@ -132,8 +143,8 @@ module fpga_mem_controller(
             end
         end
         WRITE_DONE: begin
-            write_data = 1'b0;
             if(resp_m_to_c) begin//write_resp_chan signaling write transaction is finished 
+                write_data = 1'b0;
                 state_next = IDLE;
             end else begin
                 state_next = state_next; 
@@ -150,6 +161,7 @@ module fpga_mem_controller(
         READ_DATA_1: begin
             read_data = 1'b1;
             if(resp_m_to_c) begin
+                bmem_rvalid = 1'b1;
                 state_next = READ_DATA_2;
             end else begin
                 state_next = state_next;
@@ -167,6 +179,7 @@ module fpga_mem_controller(
         end
         READ_DONE: begin
             read_data = 1'b0;
+            unlatch_bmem_rdata = 1'b1;
             state_next = IDLE;
         end
         endcase

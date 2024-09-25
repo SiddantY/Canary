@@ -6,7 +6,7 @@ module fpga_bram #(
     fpga_bram_itf.mem itf
 );
 
-    logic [DATA_WIDTH-1:0] internal_memory_array [logic [(2**ADDRESS_WIDTH)-1:0]];
+    logic [DATA_WIDTH-1:0] internal_memory_array [logic [(2**27)-1:0]];
     logic [DATA_WIDTH-1:0] dina;
     logic [ADDRESS_WIDTH-1:0] addra;
     logic store_address;
@@ -14,30 +14,34 @@ module fpga_bram #(
     logic store_data;
     logic store_data_1;
     logic clear_data;
+    logic enable_memory;
 
     task automatic reset();
         automatic string memfile = {getenv("ECE411_MEMLST"), "_8.lst"};
         automatic string memfile1 = {getenv("ECE411_MEMLST_PIPE"), "_8.lst"};
         internal_memory_array.delete();
-        $readmemh(memfile, internal_memory_array);
         $readmemh(memfile1, internal_memory_array);
+        $readmemh(memfile, internal_memory_array);
         $display("using memory file %s", memfile);
         $display("using memory file %s", memfile1);
     endtask
 
-    always @(posedge itf.fpga_clk iff itf.rst) begin
+    always @(posedge itf.clk iff itf.rst) begin
         reset();
     end
 
-    enum logic [2:0] {  
+    typedef enum logic [2:0] {  
         idle,
         read_address,
         read_data,
         read_data_1,
+        read_respond,
         respond
-    } state, next_state;
+    } state_t;
 
-    always_ff @(posedge itf.fpga_clk) begin
+    state_t state, next_state;
+
+    always_ff @(posedge itf.clk) begin
         if(itf.rst) begin
             state <= idle;
         end else begin
@@ -51,6 +55,8 @@ module fpga_bram #(
         store_data = 1'b0;
         store_data_1 = 1'b0;
         clear_data = 1'b0;
+        enable_memory = 1'b0;
+        itf.resp_m_to_c = 1'b0;
         unique case(state)
             idle: begin
                 clear_address = 1'b1;
@@ -65,41 +71,61 @@ module fpga_bram #(
                 if(itf.address_on_c_to_m) begin
                     // Store Address
                     store_address = 1'b1;
+                    itf.resp_m_to_c = 1'b1;
                     if(itf.write_en_c_to_m) begin
                         next_state = read_data;
+                    end else if (itf.read_en_c_to_m) begin
+                        next_state = read_respond;
                     end else begin
-                        next_state = respond;
+                        next_state = respond; // Move to perform a read operation and respond
                     end
                 end else begin
-                    next_state = read_address;
+                    next_state = read_address; // Maintain state until address is on bus
                 end
             end
             read_data: begin
                 if(itf.data_on_c_to_m) begin
                     // Store Data
                     store_data = 1'b1;
+                    itf.resp_m_to_c = 1'b1;
                     next_state = read_data_1;
                 end else begin
-                    next_state = read_data;
+                    next_state = read_data; // Maintain state until data is on bus
                 end
             end
             read_data_1: begin
                 if(itf.data_on_c_to_m) begin
                     // Store Data
                     store_data_1 = 1'b1;
+                    itf.resp_m_to_c = 1'b1;
                     next_state = respond;
                 end else begin
                     next_state = read_data_1;
                 end
             end
+            read_respond: begin
+                itf.resp_m_to_c = 1'b1;
+                enable_memory = 1'b1;
+                next_state = respond;
+            end   
             respond: begin
+                itf.resp_m_to_c = 1'b1;
+                enable_memory = 1'b1;
                 next_state = idle;
             end
-            default: next_state = state;
+            default: begin
+                clear_address = 1'b0;
+                store_address = 1'b0;
+                clear_data = 1'b0;
+                store_data = 1'b0;
+                itf.resp_m_to_c  = 1'b0;
+                enable_memory = 1'b0;
+                next_state = state;
+            end
         endcase
     end
 
-    always_ff @(posedge itf.fpga_clk) begin
+    always_ff @(posedge itf.clk) begin
         if(store_address) begin
             addra <= itf.address_data_bus_c_to_m;
         end else if(clear_address) begin
@@ -113,28 +139,27 @@ module fpga_bram #(
         end else if(clear_data) begin
             dina <= 'x;
         end
-
     end
 
-
-    always_ff @(posedge itf.fpga_clk) begin
-        if(itf.write_en_c_to_m) begin
-            internal_memory_array[addra] <= dina;
-        end else if(itf.read_en_c_to_m)begin
-            itf.address_data_bus_m_to_c <= internal_memory_array[addra];
-        end else begin
-            itf.address_data_bus_m_to_c <= 'x;
+    always_ff @(posedge itf.clk) begin
+        if(enable_memory) begin
+            if(itf.write_en_c_to_m) begin
+                internal_memory_array[addra] <= dina;
+            end else if(itf.read_en_c_to_m)begin
+                itf.address_data_bus_m_to_c <= internal_memory_array[addra];
+            end else begin
+                itf.address_data_bus_m_to_c <= 'x;
+            end
         end
-        
     end
 
-    always @(posedge itf.fpga_clk iff !itf.rst) begin
-        if(itf.ena) begin
-            if($isunknown(itf.addra)) begin
+    always @(posedge itf.clk iff !itf.rst) begin
+        if(enable_memory) begin
+            if($isunknown(addra)) begin
                 $error("Address contains 'x");
                 itf.error <= 1'b1;
-            end else if(itf.wea) begin
-                if($isunknown(itf.dina)) begin
+            end else if(itf.write_en_c_to_m) begin
+                if($isunknown(dina)) begin
                     $error("Input data contains 'x");
                     itf.error <= 1'b1;
                 end
