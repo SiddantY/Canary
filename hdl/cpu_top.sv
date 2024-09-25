@@ -144,16 +144,16 @@ fpga_mem_controller fpga_mem_controller(
     .rst(rst),
 
     // Caches -> Controller
-    // .bmem_addr(bmem_addr),
-    // .bmem_read(bmem_read),
-    // .bmem_write(bmem_write),
-    // .bmem_wdata(bmem_wdata),
+    .bmem_addr(bmem_addr),
+    .bmem_read(bmem_read),
+    .bmem_write(bmem_write),
+    .bmem_wdata(bmem_wdata),
 
-    // // Controller -> Caches
-    // .bmem_ready(bmem_ready),
-    // .bmem_raddr(bmem_raddr),
-    // .bmem_rdata(bmem_rdata),
-    // .bmem_rvalid(bmem_rvalid),
+    // Controller -> Caches
+    .bmem_ready(bmem_ready),
+    .bmem_raddr(bmem_raddr),
+    .bmem_rdata(bmem_rdata),
+    .bmem_rvalid(bmem_rvalid),
 
     // Memory -> Controller
     .address_data_bus_m_to_c(address_data_bus_m_to_c),
