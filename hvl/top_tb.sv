@@ -5,8 +5,11 @@ module top_tb;
     timeunit 1ns;
     timeprecision 1ps;
 
+    int fpga_clock_half_period_ps = getenv("ECE411_FPGA_CLOCK_PERIOD_PS").atoi() / 2;
+    bit fpga_clk;
+    always #(fpga_clock_half_period_ps) fpga_clk = ~ fpga_clk;
+    
     int clock_half_period_ps = getenv("ECE411_CLOCK_PERIOD_PS").atoi() / 2;
-
     bit clk;
     always #(clock_half_period_ps) clk = ~clk;
 
@@ -21,8 +24,8 @@ module top_tb;
     // random_tb mem(.itf_i(mem_itf_i), .itf_d(mem_itf_d));
 
     // Single memory port connection when caches are integrated into design (CP3 and after)
-    banked_mem_itf bmem_itf(.*);
-    banked_memory banked_memory(.itf(bmem_itf));
+    // banked_mem_itf bmem_itf(.*);
+    // banked_memory banked_memory(.itf(bmem_itf));
 
     // FPGA BRAM
     fpga_bram_itf fpga_bram_itf(.*);
@@ -137,7 +140,7 @@ module top_tb;
         
 
         // Controller -> Memory
-        .address_data_bus_c_to_m({32{1'b0},fpga_bram_itf.addra[31:0]}),
+        .address_data_bus_c_to_m({{32{1'b0}},fpga_bram_itf.addra[31:0]}),
         .address_on_c_to_m(fpga_bram_itf.ena),
         .data_on_c_to_m(data_on_c_to_m),
         .read_en_c_to_m(read_en_c_to_m),

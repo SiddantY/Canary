@@ -1,5 +1,6 @@
 {
     "clock"       : 1250,
+    "fpga_clock"  : 5000,
     "m_ext"       : true,
     "c_ext"       : false,
     "f_ext"       : false,

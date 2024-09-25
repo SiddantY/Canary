@@ -21,6 +21,7 @@ outputs/synth.ddc:
 	python3 get_min_power.py
 	python3 get_compile_cmd.py
 	export ECE411_CLOCK_PERIOD_PS=$(shell python3 get_clock.py) ;\
+	export ECE411_FPGA_CLOCK_PERIOD_PS=$(shell python3 get_fpga_clock.py) ;\
 	export ECE411_MIN_POWER=$(shell python3 get_min_power.py) ;\
 	export ECE411_COMPILE_CMD="$(shell python3 get_compile_cmd.py)" ;\
 	dc_shell -f synthesis.tcl |& tee reports/synthesis.log

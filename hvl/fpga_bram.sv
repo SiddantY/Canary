@@ -12,6 +12,7 @@ module fpga_bram #(
     logic store_address;
     logic clear_address;
     logic store_data;
+    logic store_data_1;
     logic clear_data;
 
     task automatic reset();
@@ -24,18 +25,19 @@ module fpga_bram #(
         $display("using memory file %s", memfile1);
     endtask
 
-    always @(posedge itf.clk iff itf.rst) begin
+    always @(posedge itf.fpga_clk iff itf.rst) begin
         reset();
     end
 
-    typedef enum logic [1:0] {  
+    enum logic [2:0] {  
         idle,
         read_address,
         read_data,
+        read_data_1,
         respond
     } state, next_state;
 
-    always_ff @(posedge itf.clk) begin
+    always_ff @(posedge itf.fpga_clk) begin
         if(itf.rst) begin
             state <= idle;
         end else begin
@@ -44,21 +46,26 @@ module fpga_bram #(
     end
 
     always_comb begin
+        store_address = 1'b0;
+        clear_address = 1'b0;
+        store_data = 1'b0;
+        store_data_1 = 1'b0;
+        clear_data = 1'b0;
         unique case(state)
             idle: begin
                 clear_address = 1'b1;
                 clear_data = 1'b1;
-                if(itf.read_en_i | itf.write_en_i) begin
+                if(itf.read_en_c_to_m | itf.write_en_c_to_m) begin
                     next_state = read_address;
                 end else begin
                     next_state = idle;
                 end
             end
             read_address: begin
-                if(itf.address_on_i) begin
+                if(itf.address_on_c_to_m) begin
                     // Store Address
                     store_address = 1'b1;
-                    if(itf.write_en_i) begin
+                    if(itf.write_en_c_to_m) begin
                         next_state = read_data;
                     end else begin
                         next_state = respond;
@@ -68,12 +75,21 @@ module fpga_bram #(
                 end
             end
             read_data: begin
-                if(itf.data_on_i) begin
+                if(itf.data_on_c_to_m) begin
                     // Store Data
                     store_data = 1'b1;
-                    next_state = respond
+                    next_state = read_data_1;
                 end else begin
                     next_state = read_data;
+                end
+            end
+            read_data_1: begin
+                if(itf.data_on_c_to_m) begin
+                    // Store Data
+                    store_data_1 = 1'b1;
+                    next_state = respond;
+                end else begin
+                    next_state = read_data_1;
                 end
             end
             respond: begin
@@ -83,15 +99,17 @@ module fpga_bram #(
         endcase
     end
 
-    always_ff @(posedge itf.clk) begin
+    always_ff @(posedge itf.fpga_clk) begin
         if(store_address) begin
-            addra <= itf.address_data_bus_i;
+            addra <= itf.address_data_bus_c_to_m;
         end else if(clear_address) begin
             addra <= 'x;
         end
 
         if(store_data) begin
-            dina <= itf.address_data_bus_i;
+            dina[31:0] <= itf.address_data_bus_c_to_m;
+        end else if(store_data_1) begin
+            dina[63:32] <= itf.address_data_bus_c_to_m;
         end else if(clear_data) begin
             dina <= 'x;
         end
@@ -99,19 +117,18 @@ module fpga_bram #(
     end
 
 
-    always_ff @(posedge itf.clk) begin
-        if(itf.ena) begin
-            if(itf.wea) begin
-                internal_memory_array[addra] <= dina;
-            end else begin
-                address_data_bus_o <= internal_memory_array[addra];
-            end
+    always_ff @(posedge itf.fpga_clk) begin
+        if(itf.write_en_c_to_m) begin
+            internal_memory_array[addra] <= dina;
+        end else if(itf.read_en_c_to_m)begin
+            itf.address_data_bus_m_to_c <= internal_memory_array[addra];
         end else begin
-            address_data_bus_o <= 'x;
+            itf.address_data_bus_m_to_c <= 'x;
         end
+        
     end
 
-    always @(posedge itf.clk iff !itf.rst) begin
+    always @(posedge itf.fpga_clk iff !itf.rst) begin
         if(itf.ena) begin
             if($isunknown(itf.addra)) begin
                 $error("Address contains 'x");
