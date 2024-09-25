@@ -157,6 +157,8 @@ always_ff @(posedge clk) begin : round_robin_scheduling_for_main_memory_access
 end : round_robin_scheduling_for_main_memory_access
 
 always_comb begin : next_state_for_round_robin_scheduler
+    next_state = state;
+    case (state)
 
     next_state = servicing;
     
@@ -264,6 +266,10 @@ always_ff @(posedge clk) begin : make_sure_reads_only_high_one_cycle
     end
 end
 
+logic delayed_done;
+
+always_ff @(posedge clk) delayed_done <= done;
+
 always_ff @( posedge clk ) begin : receiving_data
         if(rst) begin
             receive_counter <= '0;
@@ -303,23 +309,23 @@ always_comb begin : combining_data_and_sending_out_resps
         ppl_d_dfp_resp = '0;
         ppl_d_dfp_rdata = '0;
 
-        if(/*bmem_raddr[31:5] == ooo_i_dfp_addr[31:5] &&*/ done && prev_state == service_ooo_i_cache) begin
+        if(/*bmem_raddr[31:5] == ooo_i_dfp_addr[31:5] &&*/ delayed_done && prev_state == service_ooo_i_cache) begin
             ooo_i_dfp_rdata = {bmem_rdata, chunk2, chunk1, chunk0};
             ooo_i_dfp_resp = 1'b1;
             ooo_i_dfp_raddr = bmem_raddr;
         end 
 
-        if(bmem_raddr[31:5] == ooo_d_dfp_addr[31:5] && done && prev_state == service_ooo_d_cache) begin
+        if(bmem_raddr[31:5] == ooo_d_dfp_addr[31:5] && delayed_done && prev_state == service_ooo_d_cache) begin
             ooo_d_dfp_rdata = {bmem_rdata, chunk2, chunk1, chunk0};
             ooo_d_dfp_resp = 1'b1;
         end
 
-        if(/*bmem_raddr[31:5] == ppl_i_dfp_addr[31:5] &&*/ done && prev_state == service_ppl_i_cache) begin
+        if(/*bmem_raddr[31:5] == ppl_i_dfp_addr[31:5] &&*/ delayed_done && prev_state == service_ppl_i_cache) begin
             ppl_i_dfp_rdata = {bmem_rdata, chunk2, chunk1, chunk0};
             ppl_i_dfp_resp = 1'b1;
         end
 
-        if(bmem_raddr[31:5] == ppl_d_dfp_addr[31:5] && done && prev_state == service_ppl_d_cache) begin
+        if(bmem_raddr[31:5] == ppl_d_dfp_addr[31:5] && delayed_done && prev_state == service_ppl_d_cache) begin
             ppl_d_dfp_rdata = {bmem_rdata, chunk2, chunk1, chunk0};
             ppl_d_dfp_resp = 1'b1;
         end

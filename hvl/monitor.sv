@@ -229,8 +229,13 @@ module monitor (
             done_print_ipc = 1'b1;
             ipc = real'(inst_count) / cycle_count;
             total_time = $time - start_time;
-            $display("Monitor: Total IPC: %f", ipc);
-            $display("Monitor: Total Time: %t", total_time);
+            if(rvfi_pc_rdata[31:0] >= 32'h60000000 && rvfi_pc_rdata[31:0] < 32'h70000000) begin
+                $display("Monitor: Pipeline Core Total IPC: %f", ipc);
+                $display("Monitor: Pipeline Core Total Time: %t", total_time);
+            end else begin
+                $display("Monitor: OOO Core Total IPC: %f", ipc);
+                $display("Monitor: OOO Core Total Time: %t", total_time);
+            end
         end
         if (!done_print_power) begin
             done_print_power = 1'b1;
@@ -267,69 +272,136 @@ module monitor (
         .errcode            (errcode)
     );
 
-    int spike_fd;
-    initial spike_fd = $fopen("./commit.log", "a");
-    final $fclose(spike_fd);
+    int ooo_spike_fd;
+    initial ooo_spike_fd = $fopen("./commit_ooo.log", "w");
+    final $fclose(ooo_spike_fd);
+
+    int ppl_spike_fd;
+    initial ppl_spike_fd = $fopen("./commit_ppl.log", "w");
+    final $fclose(ppl_spike_fd);
 
     always @ (posedge itf.clk iff !itf.rst) begin
         for (int unsigned channel=0; channel < 8; ++channel) begin
-            if(itf.valid[channel]) begin
-                if (itf.order[channel] % 1000 == 0) begin
-                    $display("dut commit No.%d, rd_s: x%02d, rd: 0x%h", itf.order[channel], itf.rd_addr[channel], itf.rd_addr[channel] ? itf.rd_wdata[channel] : 5'd0);
-                end
-                if (itf.inst[channel][1:0] == 2'b11) begin
-                    $fwrite(spike_fd, "core   0: 3 0x%h (0x%h)", itf.pc_rdata[channel], itf.inst[channel]);
-                end else begin
-                    $fwrite(spike_fd, "core   0: 3 0x%h (0x%h)", itf.pc_rdata[channel], itf.inst[channel][15:0]);
-                end
-                if (itf.rd_addr[channel] != 0) begin
-                    if (itf.rd_addr[channel] < 10)
-                        $fwrite(spike_fd, " x%0d  ", itf.rd_addr[channel]);
-                    else
-                        $fwrite(spike_fd, " x%0d ", itf.rd_addr[channel]);
-                    $fwrite(spike_fd, "0x%h", itf.rd_wdata[channel]);
-                end
-                if (itf.mem_rmask[channel] != 0) begin
-                    automatic int first_1 = 0;
-                    for(int i = 0; i < 4; i++) begin
-                        if(itf.mem_rmask[channel][i]) begin
-                            first_1 = i;
-                            break;
-                        end
+            if(itf.pc_rdata[channel] >= 32'h60000000 && itf.pc_rdata[channel] < 32'h70000000) begin
+                if(itf.valid[channel]) begin
+                    if (itf.order[channel] % 1000 == 0) begin
+                        $display("Pipeline Core commit No.%d, rd_s: x%02d, rd: 0x%h", itf.order[channel], itf.rd_addr[channel], itf.rd_addr[channel] ? itf.rd_wdata[channel] : 5'd0);
                     end
-                    $fwrite(spike_fd, " mem 0x%h", {itf.mem_addr[channel][31:2], 2'b0} + first_1);
-                end
-                if (itf.mem_wmask[channel] != 0) begin
-                    automatic int amount_o_1 = 0;
-                    automatic int first_1 = 0;
-                    for(int i = 0; i < 4; i++) begin
-                        if(itf.mem_wmask[channel][i]) begin
-                            amount_o_1 += 1;
-                        end
+                    if (itf.inst[channel][1:0] == 2'b11) begin
+                        $fwrite(ppl_spike_fd, "core   0: 3 0x%h (0x%h)", itf.pc_rdata[channel], itf.inst[channel]);
+                    end else begin
+                        $fwrite(ppl_spike_fd, "core   0: 3 0x%h (0x%h)", itf.pc_rdata[channel], itf.inst[channel][15:0]);
                     end
-                    for(int i = 0; i < 4; i++) begin
-                        if(itf.mem_wmask[channel][i]) begin
-                            first_1 = i;
-                            break;
-                        end
+                    if (itf.rd_addr[channel] != 0) begin
+                        if (itf.rd_addr[channel] < 10)
+                            $fwrite(ppl_spike_fd, " x%0d  ", itf.rd_addr[channel]);
+                        else
+                            $fwrite(ppl_spike_fd, " x%0d ", itf.rd_addr[channel]);
+                        $fwrite(ppl_spike_fd, "0x%h", itf.rd_wdata[channel]);
                     end
-                    $fwrite(spike_fd, " mem 0x%h", {itf.mem_addr[channel][31:2], 2'b0} + first_1);
-                    case (amount_o_1)
-                        1: begin
-                            automatic logic[7:0] wdata_byte = itf.mem_wdata[channel][8*first_1 +: 8];
-                            $fwrite(spike_fd, " 0x%h", wdata_byte);
+                    if (itf.mem_rmask[channel] != 0) begin
+                        automatic int first_1 = 0;
+                        for(int i = 0; i < 4; i++) begin
+                            if(itf.mem_rmask[channel][i]) begin
+                                first_1 = i;
+                                break;
+                            end
                         end
-                        2: begin
-                            automatic logic[15:0] wdata_half = itf.mem_wdata[channel][8*first_1 +: 16];
-                            $fwrite(spike_fd, " 0x%h", wdata_half);
+                        $fwrite(ppl_spike_fd, " mem 0x%h", {itf.mem_addr[channel][31:2], 2'b0} + first_1);
+                    end
+                    if (itf.mem_wmask[channel] != 0) begin
+                        automatic int amount_o_1 = 0;
+                        automatic int first_1 = 0;
+                        for(int i = 0; i < 4; i++) begin
+                            if(itf.mem_wmask[channel][i]) begin
+                                amount_o_1 += 1;
+                            end
                         end
-                        4:
-                            $fwrite(spike_fd, " 0x%h", itf.mem_wdata[channel]);
-                    endcase
+                        for(int i = 0; i < 4; i++) begin
+                            if(itf.mem_wmask[channel][i]) begin
+                                first_1 = i;
+                                break;
+                            end
+                        end
+                        $fwrite(ppl_spike_fd, " mem 0x%h", {itf.mem_addr[channel][31:2], 2'b0} + first_1);
+                        case (amount_o_1)
+                            1: begin
+                                automatic logic[7:0] wdata_byte = itf.mem_wdata[channel][8*first_1 +: 8];
+                                $fwrite(ppl_spike_fd, " 0x%h", wdata_byte);
+                            end
+                            2: begin
+                                automatic logic[15:0] wdata_half = itf.mem_wdata[channel][8*first_1 +: 16];
+                                $fwrite(ppl_spike_fd, " 0x%h", wdata_half);
+                            end
+                            4:
+                                $fwrite(ppl_spike_fd, " 0x%h", itf.mem_wdata[channel]);
+                        endcase
+                    end
+                    $fwrite(ppl_spike_fd, "\n");
+                    if (is_halt(itf.pc_rdata[channel], itf.pc_wdata[channel], itf.inst[channel])) begin
+                        break;
+                    end
                 end
-                $fwrite(spike_fd, "\n");
-                if (is_halt(itf.pc_rdata[channel], itf.pc_wdata[channel], itf.inst[channel])) begin
-                    break;
+            end
+            else begin
+                if(itf.valid[channel]) begin
+                    if (itf.order[channel] % 1000 == 0) begin
+                        $display("OOO Core commit No.%d, rd_s: x%02d, rd: 0x%h", itf.order[channel], itf.rd_addr[channel], itf.rd_addr[channel] ? itf.rd_wdata[channel] : 5'd0);
+                    end
+                    if (itf.inst[channel][1:0] == 2'b11) begin
+                        $fwrite(ooo_spike_fd, "core   0: 3 0x%h (0x%h)", itf.pc_rdata[channel], itf.inst[channel]);
+                    end else begin
+                        $fwrite(ooo_spike_fd, "core   0: 3 0x%h (0x%h)", itf.pc_rdata[channel], itf.inst[channel][15:0]);
+                    end
+                    if (itf.rd_addr[channel] != 0) begin
+                        if (itf.rd_addr[channel] < 10)
+                            $fwrite(ooo_spike_fd, " x%0d  ", itf.rd_addr[channel]);
+                        else
+                            $fwrite(ooo_spike_fd, " x%0d ", itf.rd_addr[channel]);
+                        $fwrite(ooo_spike_fd, "0x%h", itf.rd_wdata[channel]);
+                    end
+                    if (itf.mem_rmask[channel] != 0) begin
+                        automatic int first_1 = 0;
+                        for(int i = 0; i < 4; i++) begin
+                            if(itf.mem_rmask[channel][i]) begin
+                                first_1 = i;
+                                break;
+                            end
+                        end
+                        $fwrite(ooo_spike_fd, " mem 0x%h", {itf.mem_addr[channel][31:2], 2'b0} + first_1);
+                    end
+                    if (itf.mem_wmask[channel] != 0) begin
+                        automatic int amount_o_1 = 0;
+                        automatic int first_1 = 0;
+                        for(int i = 0; i < 4; i++) begin
+                            if(itf.mem_wmask[channel][i]) begin
+                                amount_o_1 += 1;
+                            end
+                        end
+                        for(int i = 0; i < 4; i++) begin
+                            if(itf.mem_wmask[channel][i]) begin
+                                first_1 = i;
+                                break;
+                            end
+                        end
+                        $fwrite(ooo_spike_fd, " mem 0x%h", {itf.mem_addr[channel][31:2], 2'b0} + first_1);
+                        case (amount_o_1)
+                            1: begin
+                                automatic logic[7:0] wdata_byte = itf.mem_wdata[channel][8*first_1 +: 8];
+                                $fwrite(ooo_spike_fd, " 0x%h", wdata_byte);
+                            end
+                            2: begin
+                                automatic logic[15:0] wdata_half = itf.mem_wdata[channel][8*first_1 +: 16];
+                                $fwrite(ooo_spike_fd, " 0x%h", wdata_half);
+                            end
+                            4:
+                                $fwrite(ooo_spike_fd, " 0x%h", itf.mem_wdata[channel]);
+                        endcase
+                    end
+                    $fwrite(ooo_spike_fd, "\n");
+                    if (is_halt(itf.pc_rdata[channel], itf.pc_wdata[channel], itf.inst[channel])) begin
+                        break;
+                    end
                 end
             end
         end

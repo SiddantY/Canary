@@ -10,7 +10,18 @@ module cpu_top(
     input logic               bmem_ready,
     input logic   [31:0]      bmem_raddr,
     input logic   [63:0]      bmem_rdata,
-    input logic               bmem_rvalid
+    input logic               bmem_rvalid,
+
+    // Memory -> Controller
+    input logic [31:0] address_data_bus_m_to_c,
+    input logic resp_m_to_c,
+
+    // Controller -> Memory
+    output logic [31:0] address_data_bus_c_to_m,
+    output logic address_on_c_to_m,
+    output logic data_on_c_to_m,
+    output logic read_en_c_to_m,
+    output logic write_en_c_to_m
 );
 
 logic   [31:0]  ooo_imem_addr;
@@ -41,6 +52,23 @@ logic   [31:0]  ppl_dmem_wdata;
 logic           ppl_dmem_resp;
 
 logic flush, jump_en, jalr_done;
+
+
+// logic   [31:0]      bmem_addr;
+// logic               bmem_read;
+// logic               bmem_write;
+// logic   [63:0]      bmem_wdata;
+
+// logic               bmem_ready;
+// logic   [31:0]      bmem_raddr;
+// logic   [63:0]      bmem_rdata;
+// logic               bmem_rvalid;
+
+logic               copy_bmem_ready;
+logic   [31:0]      copy_bmem_raddr;
+logic   [63:0]      copy_bmem_rdata;
+logic               copy_bmem_rvalid;
+
 
 ooo_cpu ooo(
     .clk            (clk),
@@ -121,10 +149,39 @@ memory memory_unit(
     .bmem_write(bmem_write),
     .bmem_wdata(bmem_wdata),
     
-    .bmem_ready(bmem_ready),
-    .bmem_raddr(bmem_raddr),
-    .bmem_rdata(bmem_rdata),
-    .bmem_rvalid(bmem_rvalid)
+    .bmem_ready(copy_bmem_ready),
+    .bmem_raddr(copy_bmem_raddr),
+    .bmem_rdata(copy_bmem_rdata),
+    .bmem_rvalid(copy_bmem_rvalid)
+);
+
+
+fpga_mem_controller fpga_mem_controller(
+    .clk(clk),
+    .rst(rst),
+
+    // Caches -> Controller
+    .bmem_addr(bmem_addr),
+    .bmem_read(bmem_read),
+    .bmem_write(bmem_write),
+    .bmem_wdata(bmem_wdata),
+
+    // Controller -> Caches
+    .bmem_ready(copy_bmem_ready),
+    .bmem_raddr(copy_bmem_raddr),
+    .bmem_rdata(copy_bmem_rdata),
+    .bmem_rvalid(copy_bmem_rvalid),
+
+    // Memory -> Controller
+    .address_data_bus_m_to_c(address_data_bus_m_to_c),
+    .resp_m_to_c(resp_m_to_c),
+
+    // Controller -> Memory
+    .address_data_bus_c_to_m(address_data_bus_c_to_m),
+    .address_on_c_to_m(address_on_c_to_m),
+    .data_on_c_to_m(data_on_c_to_m),
+    .read_en_c_to_m(read_en_c_to_m),
+    .write_en_c_to_m(write_en_c_to_m)
 );
 
 endmodule
