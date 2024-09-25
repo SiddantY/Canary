@@ -25,24 +25,24 @@ interface fpga_bram_itf #(
     bit                         error = 1'b0;
 
     modport mem (
-        input                   clk,
-        input                   rst,
+        input                    clk,
+        input                    rst,
 
-        input                   address_data_bus_i;
-        input                   address_on_i;
-        input                   data_on_i;
-        input                   read_en_i;
-        input                   write_en_i;
+        input                    address_data_bus_i,
+        input                    address_on_i,
+        input                    data_on_i,
+        input                    read_en_i,
+        input                    write_en_i,
 
-        output                   address_data_bus_o;
-        output                   resp_o;
+        output                   address_data_bus_o,
+        output                   resp_o,
 
         // input                   addra,
         // input                   dina,
         // input                   wea,        
         // input                   ena,        
         // output                  douta,   
-        output                  error
+        output                   error
     );
 
 endinterface

@@ -127,17 +127,11 @@ module top_tb;
         .bmem_rvalid(bmem_itf.rvalid),
 
         // Memory -> Controller
-        .address_data_bus_m_to_c(fpga_bram_itf.douta),
-        .address_on_m_to_c(1'b0), // Memory should not send addresses
-        .data_on_m_to_c(1'b1), // Memory only sends data
-        .read_en_m_to_c(1'b0),
-        .write_en_m_to_c(1'b0),
-        .resp_m_to_c(1'b0),
-
-        
+        .address_data_bus_m_to_c(fpga_bram_itf.address_data_bus_o),
+        .resp_m_to_c(fpga_bram_itf.resp_o),
 
         // Controller -> Memory
-        .address_data_bus_c_to_m({32{1'b0},fpga_bram_itf.addra[31:0]}),
+        .address_data_bus_c_to_m(fpga_bram_itf.address_data_bus_i),
         .address_on_c_to_m(fpga_bram_itf.ena),
         .data_on_c_to_m(data_on_c_to_m),
         .read_en_c_to_m(read_en_c_to_m),

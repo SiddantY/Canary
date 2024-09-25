@@ -28,12 +28,14 @@ module fpga_bram #(
         reset();
     end
 
-    typedef enum logic [1:0] {  
+    typedef enum logic [1:0] {
         idle,
         read_address,
         read_data,
         respond
-    } state, next_state;
+    } state_t;
+
+    state_t state, next_state;
 
     always_ff @(posedge itf.clk) begin
         if(itf.rst) begin
@@ -44,6 +46,14 @@ module fpga_bram #(
     end
 
     always_comb begin
+        clear_address = 1'b0;
+        store_address = 1'b0;
+        clear_data = 1'b0;
+        store_data = 1'b0;
+        resp_o = 1'b0;
+        enable_memory = 1'b0;
+        next_state = state;
+
         unique case(state)
             idle: begin
                 clear_address = 1'b1;
@@ -56,36 +66,46 @@ module fpga_bram #(
             end
             read_address: begin
                 if(itf.address_on_i) begin
-                    // Store Address
-                    store_address = 1'b1;
+                    resp_o = 1'b1; // Acknowledge recieving the address
+                    store_address = 1'b1; // Store Address
                     if(itf.write_en_i) begin
-                        next_state = read_data;
+                        next_state = read_data; // Move to read data to be written
                     end else begin
-                        next_state = respond;
+                        next_state = respond; // Move to perform a read operation and respond
                     end
                 end else begin
-                    next_state = read_address;
+                    next_state = read_address; // Maintain state until address is on bus
                 end
             end
             read_data: begin
                 if(itf.data_on_i) begin
-                    // Store Data
-                    store_data = 1'b1;
-                    next_state = respond
+                    resp_o = 1'b1; // Acknowledge recieving the data
+                    store_data = 1'b1; // Store Data
+                    next_state = respond; // Move to perform a write operation and respond
                 end else begin
-                    next_state = read_data;
+                    next_state = read_data; // Maintain state until data is on bus
                 end
             end
             respond: begin
+                resp_o = 1'b1;
+                enable_memory = 1'b1;
                 next_state = idle;
             end
-            default: next_state = state;
+            default: begin
+                clear_address = 1'b0;
+                store_address = 1'b0;
+                clear_data = 1'b0;
+                store_data = 1'b0;
+                resp_o = 1'b0;
+                enable_memory = 1'b0;
+                next_state = state;
+            end
         endcase
     end
 
     always_ff @(posedge itf.clk) begin
         if(store_address) begin
-            addra <= itf.address_data_bus_i;
+            addra <= itf.address_data_bus_i[31:0];
         end else if(clear_address) begin
             addra <= 'x;
         end
@@ -95,15 +115,13 @@ module fpga_bram #(
         end else if(clear_data) begin
             dina <= 'x;
         end
-
     end
 
-
     always_ff @(posedge itf.clk) begin
-        if(itf.ena) begin
-            if(itf.wea) begin
+        if(enable_memory) begin
+            if(itf.write_en_i) begin
                 internal_memory_array[addra] <= dina;
-            end else begin
+            end else if(itf.read_en_i)begin
                 address_data_bus_o <= internal_memory_array[addra];
             end
         end else begin
@@ -112,12 +130,12 @@ module fpga_bram #(
     end
 
     always @(posedge itf.clk iff !itf.rst) begin
-        if(itf.ena) begin
-            if($isunknown(itf.addra)) begin
+        if(enable_memory) begin
+            if($isunknown(addra)) begin
                 $error("Address contains 'x");
                 itf.error <= 1'b1;
-            end else if(itf.wea) begin
-                if($isunknown(itf.dina)) begin
+            end else if(itf.write_en_i) begin
+                if($isunknown(dina)) begin
                     $error("Input data contains 'x");
                     itf.error <= 1'b1;
                 end
