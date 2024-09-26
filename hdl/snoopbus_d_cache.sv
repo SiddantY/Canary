@@ -89,6 +89,7 @@ logic [25 :0] tag_out1    [4];
 
 // Valid Array Signals
 logic         v_write_en [4];
+logic         v_write_en1 [4];
 logic         valid_in   [4];
 logic         valid_out  [4];
 
@@ -323,7 +324,7 @@ always_comb begin : state_signals
                 ufp_resp = 1'b1;
                 ufp_rdata = 32'hFFFF_FFFF;
 
-            end else if (cache_hit && tag_out[way_index][25:24] != mesi_i) begin
+            end else if (cache_hit && tag_out[way_index][25:24] != 2'b00) begin
 
                 if (ufp_rmask != 4'b0) begin
 
@@ -453,10 +454,20 @@ always_comb begin : cache_hit_logic_bus_port
     data_in1[2] = '0;
     data_in1[3] = '0;
 
-    bus_way_hit[0] = (tag_out1[0][22:0] == bus_incomming_command_address[31:9]) && valid_out1[0];
-    bus_way_hit[1] = (tag_out1[1][22:0] == bus_incomming_command_address[31:9]) && valid_out1[1];
-    bus_way_hit[2] = (tag_out1[2][22:0] == bus_incomming_command_address[31:9]) && valid_out1[2];
-    bus_way_hit[3] = (tag_out1[3][22:0] == bus_incomming_command_address[31:9]) && valid_out1[3];
+    d_write_en1[0] = 1'b0;
+    d_write_en1[1] = 1'b0;
+    d_write_en1[2] = 1'b0;
+    d_write_en1[3] = 1'b0;
+
+    v_write_en1[0] = 1'b0;
+    v_write_en1[1] = 1'b0;
+    v_write_en1[2] = 1'b0;
+    v_write_en1[3] = 1'b0;
+
+    bus_way_hit[0] = (tag_out1[0][22:0] == bus_incomming_command_address[31:9]) && valid_out1[0] && tag_out1[0][25:24] != 2'b00;
+    bus_way_hit[1] = (tag_out1[1][22:0] == bus_incomming_command_address[31:9]) && valid_out1[1] && tag_out1[1][25:24] != 2'b00;
+    bus_way_hit[2] = (tag_out1[2][22:0] == bus_incomming_command_address[31:9]) && valid_out1[2] && tag_out1[2][25:24] != 2'b00;
+    bus_way_hit[3] = (tag_out1[3][22:0] == bus_incomming_command_address[31:9]) && valid_out1[3] && tag_out1[3][25:24] != 2'b00;
 
     bus_cache_hit = bus_incomming_command_address != '0 ? bus_way_hit[0] | bus_way_hit[1] | bus_way_hit[2] | bus_way_hit[3] : 1'b0;
 
@@ -478,18 +489,21 @@ always_comb begin : cache_hit_logic_bus_port
 
             end
 
-            else if (bus_incomming_command_command == pr_rd) begin
+            else if (bus_incomming_command_command == bus_rd) begin
 
                 t_write_en1[bus_way_index] = 1'b1;
-                tag_in1[bus_way_index] = {mesi_s, 1'b0, bus_resp_addr[31:9]};
+                tag_in1[bus_way_index] = {mesi_s, 1'b1, bus_resp_addr[31:9]};
                 bus_data_out = data_out1[bus_way_index];
 
 
             end
         end
-    end else if (state == bus_read && bus_incomming_command_command == pr_rd) begin
-        data_in1[bus_way_index] = bus_resp_data;
-        d_write_en1[bus_way_index] = 1'b1;
+    end else if (state == bus_read && bus_incomming_command_command == bus_rd && bus_resp == 2'b01) begin
+        data_in1[PLRU_way] = bus_resp_data;
+        d_write_en1[PLRU_way] = 1'b1;
+        t_write_en1[PLRU_way] = 1'b1;
+        tag_in1[PLRU_way] = {mesi_s, 1'b0, ufp_addr[31:9]};
+        v_write_en1[PLRU_way] = 1'b1;
     end
 end
 
@@ -506,7 +520,7 @@ generate for (genvar i = 0; i < 4; i++) begin : arrays
         .clk1       (clk),
         .csb1       (1'b0),
         .web1       (!d_write_en1[i]),
-        .wmask1     (cache_wmask),
+        .wmask1     ('1),
         .addr1      (bus_incomming_command_address[8:5]),
         .din1       (data_in1[i]),
         .dout1      (data_out1[i])
@@ -534,7 +548,9 @@ generate for (genvar i = 0; i < 4; i++) begin : arrays
         .addr0      (set_index),
         .din0       (1'b1),
         .dout0      (valid_out[i]),
+        .web1       (!v_write_en1[i]),
         .addr1      (bus_incomming_command_address[8:5]),
+        .din1       (1'b1),
         .dout1      (valid_out1[i])
     );
 end endgenerate
