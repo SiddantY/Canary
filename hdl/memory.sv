@@ -357,7 +357,9 @@ always_ff @(posedge clk) begin : write_counter_logic
         if(write_counter == 2'd2) begin if(wburst_counter) begin bmem_wdata <= prev_state == service_ooo_d_cache ? ooo_d_dfp_wdata[191:128] : ppl_d_dfp_wdata[191:128]; write_counter <= write_counter + 2'd1; end end
         
         if(write_counter == 2'd3) begin 
-            bmem_wdata <= prev_state == service_ooo_d_cache ? ooo_d_dfp_wdata[255:192] : ppl_d_dfp_wdata[255:192];
+            if(wburst_counter) begin 
+                bmem_wdata <= prev_state == service_ooo_d_cache ? ooo_d_dfp_wdata[255:192] : ppl_d_dfp_wdata[255:192];
+            end
             if(bmem_ready) begin
                 write_counter <= 2'd0; 
                 w_done <= 1'b1;

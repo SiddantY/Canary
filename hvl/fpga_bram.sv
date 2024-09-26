@@ -273,7 +273,11 @@ module fpga_bram #(
             if(itf.write_en_c_to_m) begin
                 internal_memory_array[addra / 32'd8] <= dina;
             end else if(itf.read_en_c_to_m)begin
-                itf.address_data_bus_m_to_c <= internal_memory_array[(addra + (32'd8 *rburst_counter)) / 32'd8][32*sub_rburst_counter +: 32];
+                if($isunknown(internal_memory_array[(addra + (32'd8 *rburst_counter)) / 32'd8][32*sub_rburst_counter +: 32])) begin
+                    itf.address_data_bus_m_to_c <= '0;
+                end else begin
+                    itf.address_data_bus_m_to_c <= internal_memory_array[(addra + (32'd8 *rburst_counter)) / 32'd8][32*sub_rburst_counter +: 32];
+                end
             end else begin
                 itf.address_data_bus_m_to_c <= 'x;
             end

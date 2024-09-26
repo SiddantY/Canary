@@ -155,8 +155,8 @@ module top_tb;
             $error("TB Error: Timed out");
             $finish;
         end
-        if (ooo_mon_itf.error != 0 | pipeline_mon_itf.error != 0) begin
-            repeat (5) @(posedge clk);
+        if (ooo_mon_itf.error != 0 | pipeline_mon_itf.error != 0  /*| fpga_bram_itf.address_data_bus_c_to_m == 32'h700043a0*/ )begin
+            repeat (50) @(posedge clk);
             $finish;
         end
         // if (mem_itf_i.error != 0) begin
