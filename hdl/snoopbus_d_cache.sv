@@ -92,10 +92,16 @@ logic         v_write_en [4];
 logic         valid_in   [4];
 logic         valid_out  [4];
 
+logic         valid_out1  [4];
+
+
 // LRU Signals
 logic         load_lru;
 logic [2:0]   lru_in, lru_out;
 logic [1:0]   PLRU_way;
+
+logic [1:0] way_index;
+
 
 enum int unsigned {
     idle,
@@ -142,11 +148,11 @@ always_comb begin : next_state_logic
             compare : begin
                 if (flush_latch) next_state = idle;
                 else begin
-                    if (cache_hit && ufp_wmask != 0 && tag_out[way_hit][25:24] == mesi_s) next_state = acquire_bus_write;
+                    if (cache_hit && ufp_wmask != 0 && tag_out[way_index][25:24] != 2'b11) next_state = acquire_bus_write;
                     else if(cache_hit) next_state = idle;
-                    else if(tag_out[PLRU_way][25:24] == 2'b00) next_state = acquire_bus_read;                 
                     else if (tag_out[PLRU_way][23]) next_state = write_back;
-                    else next_state = allocate;
+                    else if(tag_out[PLRU_way][25:24] == 2'b00) next_state = acquire_bus_read;                 
+                    else next_state = acquire_bus_read;
                 end
             end
 
@@ -211,8 +217,6 @@ logic [8:5]  set_index;
 logic [4:0]  offset;
 
 logic [31:0] w_maskEXT, r_maskEXT;
-
-logic [1:0] way_index;
 
 logic mask_ufp_resp;
 
@@ -341,7 +345,10 @@ always_comb begin : state_signals
                             tag_in[way_index] = {mesi_m, 1'b1, tag};
                             mask_ufp_resp = 1'b1;
                         end
-                        mesi_e : tag_in[way_index] = {mesi_m, 1'b1, tag};
+                        mesi_e : begin 
+                            tag_in[way_index] = {mesi_m, 1'b1, tag};
+                            mask_ufp_resp = 1'b1;
+                        end
                         mesi_m : tag_in[way_index] = {mesi_m, 1'b1, tag};
                     endcase
                     
@@ -434,6 +441,11 @@ always_comb begin : cache_hit_logic_bus_port
     tag_in1[2] = '0;
     tag_in1[3] = '0;
 
+    t_write_en1[0] = 1'b0;
+    t_write_en1[1] = 1'b0;
+    t_write_en1[2] = 1'b0;
+    t_write_en1[3] = 1'b0;
+
     bus_data_out = '0;
     
     data_in1[0] = '0; 
@@ -441,12 +453,12 @@ always_comb begin : cache_hit_logic_bus_port
     data_in1[2] = '0;
     data_in1[3] = '0;
 
-    bus_way_hit[0] = (tag_out1[0][22:0] == bus_incomming_command_address[31:9]) == 1'b1 ? 1'b1 : 1'b0;
-    bus_way_hit[1] = (tag_out1[1][22:0] == bus_incomming_command_address[31:9]) == 1'b1 ? 1'b1 : 1'b0;
-    bus_way_hit[2] = (tag_out1[2][22:0] == bus_incomming_command_address[31:9]) == 1'b1 ? 1'b1 : 1'b0;
-    bus_way_hit[3] = (tag_out1[3][22:0] == bus_incomming_command_address[31:9]) == 1'b1 ? 1'b1 : 1'b0;
+    bus_way_hit[0] = (tag_out1[0][22:0] == bus_incomming_command_address[31:9]) && valid_out1[0];
+    bus_way_hit[1] = (tag_out1[1][22:0] == bus_incomming_command_address[31:9]) && valid_out1[1];
+    bus_way_hit[2] = (tag_out1[2][22:0] == bus_incomming_command_address[31:9]) && valid_out1[2];
+    bus_way_hit[3] = (tag_out1[3][22:0] == bus_incomming_command_address[31:9]) && valid_out1[3];
 
-    bus_cache_hit = bus_command_address != '0 ? bus_way_hit[0] | bus_way_hit[1] | bus_way_hit[2] | bus_way_hit[3] : 1'b0;
+    bus_cache_hit = bus_incomming_command_address != '0 ? bus_way_hit[0] | bus_way_hit[1] | bus_way_hit[2] | bus_way_hit[3] : 1'b0;
 
     if (bus_way_hit[0] == 1'b1)      bus_way_index = 2'b00;
     else if (bus_way_hit[2] == 1'b1) bus_way_index = 2'b10;
@@ -459,7 +471,7 @@ always_comb begin : cache_hit_logic_bus_port
         
         if (bus_cache_hit) begin
 
-            if (bus_incomming_command_command == pr_wr) begin
+            if (bus_incomming_command_command == 3'b010) begin
 
                 t_write_en1[bus_way_index] = 1'b1;
                 tag_in1[bus_way_index][25:24] = mesi_i;
@@ -514,14 +526,16 @@ generate for (genvar i = 0; i < 4; i++) begin : arrays
         .din1       (tag_in1[i]),
         .dout1      (tag_out1[i])
     );
-    ff_array #(.WIDTH(1)) valid_array (
+    ff_array1 #(.WIDTH(1)) valid_array (
         .clk0       (clk),
         .rst0       (rst),
         .csb0       (1'b0),
         .web0       (!v_write_en[i]),
         .addr0      (set_index),
         .din0       (1'b1),
-        .dout0      (valid_out[i])
+        .dout0      (valid_out[i]),
+        .addr1      (bus_incomming_command_address[8:5]),
+        .dout1      (valid_out1[i])
     );
 end endgenerate
 
