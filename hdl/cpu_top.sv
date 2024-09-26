@@ -109,7 +109,7 @@ pipeline_cpu ppl(
     .dmem_wdata(ppl_dmem_wdata),
     .dmem_resp(ppl_dmem_resp)
 );
-
+logic wburst_counter;
 memory memory_unit(
     .clk(clk),
     .rst(rst),
@@ -152,7 +152,8 @@ memory memory_unit(
     .bmem_ready(copy_bmem_ready),
     .bmem_raddr(copy_bmem_raddr),
     .bmem_rdata(copy_bmem_rdata),
-    .bmem_rvalid(copy_bmem_rvalid)
+    .bmem_rvalid(copy_bmem_rvalid),
+    .wburst_counter(wburst_counter)
 );
 
 
@@ -171,6 +172,7 @@ fpga_mem_controller fpga_mem_controller(
     .bmem_raddr(copy_bmem_raddr),
     .bmem_rdata(copy_bmem_rdata),
     .bmem_rvalid(copy_bmem_rvalid),
+    .wburst_counter(wburst_counter),
 
     // Memory -> Controller
     .address_data_bus_m_to_c(address_data_bus_m_to_c),

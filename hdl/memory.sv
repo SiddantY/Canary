@@ -40,7 +40,8 @@ module memory(
     input logic             bmem_ready,
     input logic   [31:0]    bmem_raddr,
     input logic   [63:0]    bmem_rdata,
-    input logic             bmem_rvalid
+    input logic             bmem_rvalid,
+    input logic             wburst_counter
 );
 
 // garbage sigs
@@ -341,22 +342,26 @@ always_ff @(posedge clk) begin : write_counter_logic
     else begin
 
         w_done <= 1'b0;
-        bmem_wdata <= '0;
+        if(write_counter == 2'd0) bmem_wdata <= '0;
         
         if ((next_state == servicing && state == service_ooo_d_cache && ooo_d_dfp_write == 1'b1)
             || (next_state == servicing && state == service_ppl_d_cache && ppl_d_dfp_write == 1'b1)) begin
                 bmem_wdata <= state == service_ooo_d_cache ? ooo_d_dfp_wdata[63:0] : ppl_d_dfp_wdata[63:0]; 
+                // if(wburst_counter) begin
                 write_counter <= 2'd1; 
+                // end
         end
         
-        if(write_counter == 2'd1) begin bmem_wdata <= prev_state == service_ooo_d_cache ? ooo_d_dfp_wdata[127:64] : ppl_d_dfp_wdata[127:64]; write_counter <= write_counter + 2'd1; end
+        if(write_counter == 2'd1) begin if(wburst_counter) begin bmem_wdata <= prev_state == service_ooo_d_cache ? ooo_d_dfp_wdata[127:64] : ppl_d_dfp_wdata[127:64]; write_counter <= write_counter + 2'd1; end end
         
-        if(write_counter == 2'd2) begin bmem_wdata <= prev_state == service_ooo_d_cache ? ooo_d_dfp_wdata[191:128] : ppl_d_dfp_wdata[191:128]; write_counter <= write_counter + 2'd1; end
+        if(write_counter == 2'd2) begin if(wburst_counter) begin bmem_wdata <= prev_state == service_ooo_d_cache ? ooo_d_dfp_wdata[191:128] : ppl_d_dfp_wdata[191:128]; write_counter <= write_counter + 2'd1; end end
         
         if(write_counter == 2'd3) begin 
             bmem_wdata <= prev_state == service_ooo_d_cache ? ooo_d_dfp_wdata[255:192] : ppl_d_dfp_wdata[255:192];
-            write_counter <= 2'd0; 
-            w_done <= 1'b1;
+            if(bmem_ready) begin
+                write_counter <= 2'd0; 
+                w_done <= 1'b1;
+            end
         end
     end
 

@@ -37,6 +37,12 @@ module fpga_bram #(
         read_address,
         read_data,
         read_data_1,
+        read_data_2,
+        read_data_3,
+        read_data_4,
+        read_data_5,
+        read_data_6,
+        read_data_7,
         read_data_from_memory,
         read_data_from_memory2,
         read_data_from_memory3,
@@ -103,6 +109,66 @@ module fpga_bram #(
                 end
             end
             read_data_1: begin
+                if(itf.data_on_c_to_m) begin
+                    // Store Data
+                    store_data_1 = 1'b1;
+                    itf.resp_m_to_c = 1'b1;
+                    next_state = read_data_2;
+                end else begin
+                    next_state = read_data_1;
+                end
+            end
+            read_data_2: begin
+                if(itf.data_on_c_to_m) begin
+                    // Store Data
+                    store_data = 1'b1;
+                    itf.resp_m_to_c = 1'b1;
+                    next_state = read_data_3;
+                end else begin
+                    next_state = read_data; // Maintain state until data is on bus
+                end
+            end
+            read_data_3: begin
+                if(itf.data_on_c_to_m) begin
+                    // Store Data
+                    store_data_1 = 1'b1;
+                    itf.resp_m_to_c = 1'b1;
+                    next_state = read_data_4;
+                end else begin
+                    next_state = read_data_1;
+                end
+            end
+            read_data_4: begin
+                if(itf.data_on_c_to_m) begin
+                    // Store Data
+                    store_data = 1'b1;
+                    itf.resp_m_to_c = 1'b1;
+                    next_state = read_data_5;
+                end else begin
+                    next_state = read_data; // Maintain state until data is on bus
+                end
+            end
+            read_data_5: begin
+                if(itf.data_on_c_to_m) begin
+                    // Store Data
+                    store_data_1 = 1'b1;
+                    itf.resp_m_to_c = 1'b1;
+                    next_state = read_data_6;
+                end else begin
+                    next_state = read_data_1;
+                end
+            end
+            read_data_6: begin
+                if(itf.data_on_c_to_m) begin
+                    // Store Data
+                    store_data = 1'b1;
+                    itf.resp_m_to_c = 1'b1;
+                    next_state = read_data_7;
+                end else begin
+                    next_state = read_data; // Maintain state until data is on bus
+                end
+            end
+            read_data_7: begin
                 if(itf.data_on_c_to_m) begin
                     // Store Data
                     store_data_1 = 1'b1;

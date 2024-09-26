@@ -13,6 +13,7 @@ module fpga_mem_controller(
     output logic   [31:0]      bmem_raddr,
     output logic   [63:0]      bmem_rdata,
     output logic               bmem_rvalid,
+    output logic               wburst_counter,
 
     // Memory -> Controller
     input logic [31:0] address_data_bus_m_to_c,
@@ -41,10 +42,17 @@ module fpga_mem_controller(
         WRITE_ADDR,
         WRITE_DATA_1,
         WRITE_DATA_2,
+        WRITE_DATA_3,
+        WRITE_DATA_4,
+        WRITE_DATA_5,
+        WRITE_DATA_6,
+        WRITE_DATA_7,
+        WRITE_DATA_8,
+        WAIT_UNTIL_BMEM_WRITE_OFF,
         WRITE_DONE
     } state, state_next;
 
-    logic wburst_counter, write_addr, write_data;
+    logic write_addr, write_data;
     logic read_addr, read_data;
     logic [31:0] rburst_counter;
     logic latch_bmem_rdata, unlatch_bmem_rdata;
@@ -62,6 +70,7 @@ module fpga_mem_controller(
                 address_data_bus_c_to_m <= bmem_addr;
             end else if(unlatch_bmem_rdata) begin
                 address_data_bus_c_to_m <= 'x;
+                bmem_raddr <= 'x;
                 bmem_rdata <= 'x;
             end else if(write_addr) begin
                 // address_data_bus_c_to_m <= bmem_addr;
@@ -148,6 +157,57 @@ module fpga_mem_controller(
             write_data = 1'b1;
             wburst_counter = 1'b1;
             if(resp_m_to_c) begin
+                state_next = WRITE_DATA_3;
+            end else begin
+                state_next = state_next;
+            end
+        end
+        WRITE_DATA_3: begin
+            write_data = 1'b1;
+            if(resp_m_to_c) begin
+                state_next = WRITE_DATA_4;
+            end else begin
+                state_next = state_next;
+            end
+        end
+        WRITE_DATA_4: begin
+            write_data = 1'b1;
+            wburst_counter = 1'b1;
+            if(resp_m_to_c) begin
+                state_next = WRITE_DATA_5;
+            end else begin
+                state_next = state_next;
+            end
+        end
+        WRITE_DATA_5: begin
+            write_data = 1'b1;
+            if(resp_m_to_c) begin
+                state_next = WRITE_DATA_6;
+            end else begin
+                state_next = state_next;
+            end
+        end
+        WRITE_DATA_6: begin
+            write_data = 1'b1;
+            wburst_counter = 1'b1;
+            if(resp_m_to_c) begin
+                state_next = WRITE_DATA_7;
+            end else begin
+                state_next = state_next;
+            end
+        end
+        WRITE_DATA_7: begin
+            write_data = 1'b1;
+            if(resp_m_to_c) begin
+                state_next = WRITE_DATA_8;
+            end else begin
+                state_next = state_next;
+            end
+        end
+        WRITE_DATA_8: begin
+            write_data = 1'b1;
+            wburst_counter = 1'b1;
+            if(resp_m_to_c) begin
                 state_next = WRITE_DONE;
             end else begin
                 state_next = state_next;
@@ -156,11 +216,22 @@ module fpga_mem_controller(
         WRITE_DONE: begin
             if(resp_m_to_c) begin//write_resp_chan signaling write transaction is finished 
                 write_data = 1'b0;
-                state_next = IDLE;
+                // wait until bmem_write is off
+                bmem_ready = 1'b1;
+                
+                state_next = WAIT_UNTIL_BMEM_WRITE_OFF;
             end else begin
                 state_next = state_next; 
             end
         end
+        WAIT_UNTIL_BMEM_WRITE_OFF: begin
+            if(bmem_write) begin
+                state_next = state_next;
+            end else begin
+                state_next = IDLE;
+            end
+        end
+
         READ_ADDR: begin
             read_addr = 1'b1;
             if(resp_m_to_c) begin
