@@ -25,7 +25,7 @@ loop:
     lw x7, 0(x6)     # Load word from memory address x6 into x7
     addi x5, x5, -1  # Decrement loop counter x5
     sw x8, 0(x6)
-    bnez x5, loop    # If x5 is not zero, branch back to loop
+    #bnez x5, loop    # If x5 is not zero, branch back to loop
 
 halt:
     slti x0, x0, -256   # Halt the program (custom halt instruction)

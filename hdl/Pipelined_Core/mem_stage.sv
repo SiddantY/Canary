@@ -26,7 +26,7 @@ import rv32i_types::*;
 logic amo_valid;
 logic [31:0] mem_data_in;
 logic [31:0] amo_operand;
-logic [2:0] amo_funct;
+logic [6:0] amo_funct;
 
 logic [31:0] mem_data_out;
 logic amo_done;
@@ -34,6 +34,20 @@ logic amo_mem_read;
 logic amo_mem_write;
 
 assign amo = ex_mem_reg.opcode == op_b_atom ? 1'b1 : 1'b0;
+
+logic [31:0] dmem_rdata_latch;
+
+always_ff @(posedge clk) begin
+
+    if(rst) begin
+        dmem_rdata_latch <= '0;
+    end else begin
+        if(dmem_resp && amo_mem_read) begin
+            dmem_rdata_latch <= dmem_rdata;
+        end
+    end
+
+end
 
 
 logic p2o; // (prevent_twice_occurance) this is used so that magic mem doesn't respond twice 1 address due to keeping the address up
@@ -47,7 +61,7 @@ always_ff @(posedge clk)
         else
             begin
 
-                if((ex_mem_reg.mem_read | ex_mem_reg.mem_write) && ex_mem_reg.rvfi.monitor_valid) // load instruction stall til response
+                if((ex_mem_reg.mem_read | ex_mem_reg.mem_write | amo_valid) && ex_mem_reg.rvfi.monitor_valid) // load instruction stall til response
                     begin
                         p2o <= 1'b1;
                     end
@@ -70,7 +84,7 @@ always_latch
         else
             begin
 
-                if((ex_mem_reg.mem_read | ex_mem_reg.mem_write) && ex_mem_reg.rvfi.monitor_valid) // load instruction stall til response
+                if((ex_mem_reg.mem_read | ex_mem_reg.mem_write | amo_valid) && ex_mem_reg.rvfi.monitor_valid) // load instruction stall til response
                     begin
                         dstall = 1'b1;
                     end
@@ -110,9 +124,9 @@ always_comb
                     default: dmem_rmask_holder = '0;  
                 endcase
             end
-        else if (amo_mem_read) begin
+        else if (amo_valid) begin
 
-                dmem_rmask_holder = 4'b1111;
+                dmem_rmask_holder = (ex_mem_reg.opcode == op_b_atom && ex_mem_reg.funct7[6:2] != 5'b00011) ? 4'b1111 : 4'b0;
         
         end else
             begin
@@ -139,10 +153,10 @@ always_comb
                     default: dmem_wdata_holder = '0;
                 endcase
             end
-        else if (amo_mem_write) begin
+        else if (amo_valid) begin
 
-                dmem_wmask_holder = 4'b1111;
-                dmem_wdata_holder = mem_data_out;
+                dmem_wmask_holder = (ex_mem_reg.opcode == op_b_atom && ex_mem_reg.funct7[6:2] != 5'b00010) ? 4'b1111 : 4'b0000;
+                dmem_wdata_holder = (ex_mem_reg.opcode == op_b_atom && ex_mem_reg.funct7[6:2] != 5'b00010) ? mem_data_out : '0;
 
         end else
             begin
@@ -206,10 +220,11 @@ always_comb
 
                 if (ex_mem_reg.funct7[6:2] != scw) begin
 
-                    mem_wb_reg_next.read_data = dmem_rdata;
                     mem_data_in = dmem_rdata;
 
                 end
+
+                mem_wb_reg_next.read_data = dmem_rdata_latch;
 
         end
 
@@ -219,7 +234,7 @@ always_comb
 always_comb
     begin : next_reg_setting
 
-        mem_wb_reg_next.rd_v = ex_mem_reg.opcode == op_b_atom ? mem_data_out : ex_mem_reg.alu_result;
+        mem_wb_reg_next.rd_v = ex_mem_reg.opcode == op_b_atom ? dmem_rdata_latch : ex_mem_reg.alu_result;
         mem_wb_reg_next.rd_s = ex_mem_reg.rd_s;
         mem_wb_reg_next.regf_we = ex_mem_reg.regf_we;
         mem_wb_reg_next.mem_read = ex_mem_reg.mem_read;
@@ -234,14 +249,14 @@ always_comb
         mem_wb_reg_next.rvfi.monitor_rs2_rdata = ex_mem_reg.rvfi.monitor_rs2_rdata; 
         mem_wb_reg_next.rvfi.monitor_regf_we = ex_mem_reg.rvfi.monitor_regf_we;
         mem_wb_reg_next.rvfi.monitor_rd_addr = ex_mem_reg.rvfi.monitor_rd_addr;
-        mem_wb_reg_next.rvfi.monitor_rd_wdata = ex_mem_reg.mem_read ? mem_wb_reg_next.read_data : ex_mem_reg.rvfi.monitor_rd_wdata; 
+        mem_wb_reg_next.rvfi.monitor_rd_wdata = (ex_mem_reg.mem_read || ex_mem_reg.opcode == op_b_atom) ? mem_wb_reg_next.read_data : ex_mem_reg.rvfi.monitor_rd_wdata; 
         mem_wb_reg_next.rvfi.monitor_pc_rdata = ex_mem_reg.rvfi.monitor_pc_rdata; 
         mem_wb_reg_next.rvfi.monitor_pc_wdata = ex_mem_reg.rvfi.monitor_pc_wdata; 
-        mem_wb_reg_next.rvfi.monitor_mem_addr = ((ex_mem_reg.mem_read | ex_mem_reg.mem_write) && ex_mem_reg.rvfi.monitor_valid) ? dmem_addr_holder : '0;
-        mem_wb_reg_next.rvfi.monitor_mem_rmask = (ex_mem_reg.mem_read  && ex_mem_reg.rvfi.monitor_valid) ? dmem_rmask_holder : '0;
-        mem_wb_reg_next.rvfi.monitor_mem_wmask = (ex_mem_reg.mem_write  && ex_mem_reg.rvfi.monitor_valid) ? dmem_wmask_holder : '0;
-        mem_wb_reg_next.rvfi.monitor_mem_rdata = dmem_rdata;
-        mem_wb_reg_next.rvfi.monitor_mem_wdata = (ex_mem_reg.mem_write  && ex_mem_reg.rvfi.monitor_valid) ? dmem_wdata_holder : '0;
+        mem_wb_reg_next.rvfi.monitor_mem_addr = ((ex_mem_reg.mem_read | ex_mem_reg.mem_write) && ex_mem_reg.rvfi.monitor_valid || ex_mem_reg.opcode == op_b_atom) ? dmem_addr_holder : '0;
+        mem_wb_reg_next.rvfi.monitor_mem_rmask = (ex_mem_reg.mem_read  && ex_mem_reg.rvfi.monitor_valid || ex_mem_reg.opcode == op_b_atom) ? dmem_rmask_holder : '0;
+        mem_wb_reg_next.rvfi.monitor_mem_wmask = (ex_mem_reg.mem_write  && ex_mem_reg.rvfi.monitor_valid || ex_mem_reg.opcode == op_b_atom) ? dmem_wmask_holder : '0;
+        mem_wb_reg_next.rvfi.monitor_mem_rdata = ex_mem_reg.opcode == op_b_atom ? dmem_rdata_latch : dmem_rdata;
+        mem_wb_reg_next.rvfi.monitor_mem_wdata = (ex_mem_reg.mem_write  && ex_mem_reg.rvfi.monitor_valid || ex_mem_reg.opcode == op_b_atom) ? dmem_wdata_holder : '0;
         
     end : next_reg_setting
 

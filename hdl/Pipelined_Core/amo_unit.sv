@@ -5,7 +5,7 @@ module amo_unit (
     input logic amo_valid,           // Signal that an AMO instruction is in the MEM stage
     input logic [31:0] mem_data_in,  // Data read from memory
     input logic [31:0] amo_operand,  // Operand for AMO operation
-    input logic [2:0] amo_funct,     // AMO function code (e.g., ADD, AND, OR, XOR)
+    input logic [6:0] amo_funct,     // AMO function code (e.g., ADD, AND, OR, XOR)
 
     input logic       mem_resp,
 
@@ -56,15 +56,18 @@ module amo_unit (
                 end
                 calc: begin
                     // Perform the calculation during calc state
-                    case (amo_funct)
-                        3'b000: computed_value <= loaded_value + amo_operand;  // AMO ADD
-                        3'b001: computed_value <= loaded_value & amo_operand;  // AMO AND
-                        3'b010: computed_value <= loaded_value | amo_operand;  // AMO OR
-                        3'b011: computed_value <= loaded_value ^ amo_operand;  // AMO XOR
+                    case (amo_funct[6:2])
+                        5'b00010 : computed_value <= '0;
+                        5'b00010 : computed_value <= amo_operand;
+                        5'b00000 : computed_value <= loaded_value + amo_operand;  // AMO ADD
+                        5'b01100 : computed_value <= loaded_value & amo_operand;  // AMO AND
+                        5'b01000 : computed_value <= loaded_value | amo_operand;  // AMO OR
+                        5'b00100 : computed_value <= loaded_value ^ amo_operand;  // AMO XOR
                 
                         default: computed_value <= loaded_value;
                     endcase
                 end
+                swc : computed_value <= amo_operand;
             endcase
         end
     end
@@ -86,7 +89,9 @@ module amo_unit (
             idle: begin
                 if (amo_valid) begin
                     mem_read = 1'b1;
-                    next_state = load;
+                    if(amo_funct[6:2] == 5'b00010) next_state = lwr;
+                    else if(amo_funct[6:2] == 5'b00011) next_state = swc;
+                    else next_state = load;
                 end
             end
 
@@ -116,12 +121,13 @@ module amo_unit (
 
             swc : begin
                 mem_write = 1'b1;
-                mem_data_out = computed_value;
+                mem_data_out = amo_operand;
                 if (mem_resp) next_state = done;
             end
 
             done: begin
                 amo_done = 1'b1;
+                mem_data_out = computed_value;
                 next_state = idle;
             end
 

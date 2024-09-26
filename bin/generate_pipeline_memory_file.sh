@@ -2,7 +2,7 @@
 
 # Settings
 # Available options are rv32i, rv32ic, rv32im, rv32imc
-ARCH=rv32im
+ARCH=rv32ima
 
 # some other settings
 SH_LOCATION=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )

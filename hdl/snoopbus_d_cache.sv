@@ -311,7 +311,7 @@ always_comb begin : state_signals
 
     // atomics
 
-    unlock = 1'b1;
+    unlock = 1'b0;
 
     case (state)
 
@@ -355,7 +355,7 @@ always_comb begin : state_signals
                     
                     t_write_en[way_index] = 1'b1;
 
-                    if(ufp_addr == this_address_locked_by_you) unlock = 1'b1;
+                    if(ufp_addr == this_address_locked_by_you && amo) unlock = 1'b1;
 
                 end
 

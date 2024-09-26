@@ -47,17 +47,17 @@ verdi:
 .PHONY: spike
 spike: $(ELF)
 	mkdir -p sim
-	spike --isa=rv32imc -m0x60000000:0x20000000 --log-commits $(ELF) |& tail -n +6 > sim/spike.log
+	spike --isa=rv32imac -m0x60000000:0x20000000 --log-commits $(ELF) |& tail -n +6 > sim/spike.log
 
 .PHONY: spike1
 spike1: $(ELF)
 	mkdir -p sim
-	spike --isa=rv32imc -m0x50000000:0x20000000 --log-commits $(ELF) |& tail -n +6 > sim/spike1.log
+	spike --isa=rv32imac -m0x50000000:0x20000000 --log-commits $(ELF) |& tail -n +6 > sim/spike1.log
 
 .PHONY: interactive_spike
 interactive_spike: $(ELF)
 	mkdir -p sim
-	spike --isa=rv32imc -m0x60000000:0x20000000 --log-commits -d $(ELF)
+	spike --isa=rv32imac -m0x60000000:0x20000000 --log-commits -d $(ELF)
 
 .PHONY: clean
 clean:
