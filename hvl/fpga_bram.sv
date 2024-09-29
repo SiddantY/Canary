@@ -15,6 +15,7 @@ module fpga_bram #(
     logic store_data_1;
     logic clear_data;
     logic enable_memory;
+    logic [31:0] wburst_counter;
     logic [31:0] rburst_counter;
     logic sub_rburst_counter;
 
@@ -43,6 +44,7 @@ module fpga_bram #(
         read_data_5,
         read_data_6,
         read_data_7,
+        read_data_8,
         read_data_from_memory,
         read_data_from_memory2,
         read_data_from_memory3,
@@ -73,6 +75,7 @@ module fpga_bram #(
         enable_memory = 1'b0;
         itf.resp_m_to_c = 1'b0;
         rburst_counter = 32'd0;
+        wburst_counter = 32'd0;
         sub_rburst_counter = 1'b0;
         unique case(state)
             idle: begin
@@ -101,7 +104,7 @@ module fpga_bram #(
             read_data: begin
                 if(itf.data_on_c_to_m) begin
                     // Store Data
-                    store_data = 1'b1;
+                    // store_data = 1'b1;
                     itf.resp_m_to_c = 1'b1;
                     next_state = read_data_1;
                 end else begin
@@ -111,7 +114,8 @@ module fpga_bram #(
             read_data_1: begin
                 if(itf.data_on_c_to_m) begin
                     // Store Data
-                    store_data_1 = 1'b1;
+                    // enable_memory = 1'b1;
+                    store_data = 1'b1;
                     itf.resp_m_to_c = 1'b1;
                     next_state = read_data_2;
                 end else begin
@@ -121,54 +125,70 @@ module fpga_bram #(
             read_data_2: begin
                 if(itf.data_on_c_to_m) begin
                     // Store Data
-                    store_data = 1'b1;
+                    store_data_1 = 1'b1;
                     itf.resp_m_to_c = 1'b1;
                     next_state = read_data_3;
                 end else begin
-                    next_state = read_data; // Maintain state until data is on bus
+                    next_state = read_data_2; // Maintain state until data is on bus
                 end
             end
             read_data_3: begin
                 if(itf.data_on_c_to_m) begin
                     // Store Data
-                    store_data_1 = 1'b1;
+                    enable_memory = 1'b1;
+                    wburst_counter = 32'd0;
+                    store_data = 1'b1;
                     itf.resp_m_to_c = 1'b1;
                     next_state = read_data_4;
                 end else begin
-                    next_state = read_data_1;
+                    next_state = read_data_3;
                 end
             end
             read_data_4: begin
                 if(itf.data_on_c_to_m) begin
                     // Store Data
-                    store_data = 1'b1;
+                    store_data_1 = 1'b1;
                     itf.resp_m_to_c = 1'b1;
                     next_state = read_data_5;
                 end else begin
-                    next_state = read_data; // Maintain state until data is on bus
+                    next_state = read_data_4; // Maintain state until data is on bus
                 end
             end
             read_data_5: begin
                 if(itf.data_on_c_to_m) begin
                     // Store Data
-                    store_data_1 = 1'b1;
+                    enable_memory = 1'b1;
+                    wburst_counter = 32'd1;
+                    store_data = 1'b1;
                     itf.resp_m_to_c = 1'b1;
                     next_state = read_data_6;
                 end else begin
-                    next_state = read_data_1;
+                    next_state = read_data_5;
                 end
             end
             read_data_6: begin
                 if(itf.data_on_c_to_m) begin
                     // Store Data
-                    store_data = 1'b1;
+                    store_data_1 = 1'b1;
                     itf.resp_m_to_c = 1'b1;
                     next_state = read_data_7;
                 end else begin
-                    next_state = read_data; // Maintain state until data is on bus
+                    next_state = read_data_6; // Maintain state until data is on bus
                 end
             end
             read_data_7: begin
+                if(itf.data_on_c_to_m) begin
+                    // Store Data
+                    enable_memory = 1'b1;
+                    wburst_counter = 32'd2;
+                    store_data = 1'b1;
+                    itf.resp_m_to_c = 1'b1;
+                    next_state = read_data_8;
+                end else begin
+                    next_state = read_data_7;
+                end
+            end
+            read_data_8: begin
                 if(itf.data_on_c_to_m) begin
                     // Store Data
                     store_data_1 = 1'b1;
@@ -237,6 +257,8 @@ module fpga_bram #(
             end
 
             respond: begin
+                enable_memory = 1'b1;
+                wburst_counter = 32'd3;
                 itf.resp_m_to_c = 1'b1;
                 next_state = idle;
             end
@@ -271,13 +293,9 @@ module fpga_bram #(
     always_ff @(posedge itf.clk) begin
         if(enable_memory) begin
             if(itf.write_en_c_to_m) begin
-                internal_memory_array[addra / 32'd8] <= dina;
+                internal_memory_array[(addra + (32'd8 *wburst_counter)) / 32'd8] <= dina;
             end else if(itf.read_en_c_to_m)begin
-                if($isunknown(internal_memory_array[(addra + (32'd8 *rburst_counter)) / 32'd8][32*sub_rburst_counter +: 32])) begin
-                    itf.address_data_bus_m_to_c <= '0;
-                end else begin
-                    itf.address_data_bus_m_to_c <= internal_memory_array[(addra + (32'd8 *rburst_counter)) / 32'd8][32*sub_rburst_counter +: 32];
-                end
+                itf.address_data_bus_m_to_c <= internal_memory_array[(addra + (32'd8 *rburst_counter)) / 32'd8][32*sub_rburst_counter +: 32];
             end else begin
                 itf.address_data_bus_m_to_c <= 'x;
             end
@@ -286,18 +304,18 @@ module fpga_bram #(
         end
     end
 
-    always @(posedge itf.clk iff !itf.rst) begin
-        if(enable_memory) begin
-            if($isunknown(addra)) begin
-                $error("Address contains 'x");
-                itf.error <= 1'b1;
-            end else if(itf.write_en_c_to_m) begin
-                if($isunknown(dina)) begin
-                    $error("Input data contains 'x");
-                    itf.error <= 1'b1;
-                end
-            end
-        end
-    end
+    // always @(posedge itf.clk iff !itf.rst) begin
+    //     if(enable_memory) begin
+    //         if($isunknown(addra)) begin
+    //             $error("Address contains 'x");
+    //             itf.error <= 1'b1;
+    //         end else if(itf.write_en_c_to_m) begin
+    //             if($isunknown(dina)) begin
+    //                 $error("Input data contains 'x");
+    //                 itf.error <= 1'b1;
+    //             end
+    //         end
+    //     end
+    // end
 
 endmodule

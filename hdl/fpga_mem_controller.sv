@@ -75,7 +75,7 @@ module fpga_mem_controller(
             end else if(write_addr) begin
                 // address_data_bus_c_to_m <= bmem_addr;
                 address_on_c_to_m <= 1'b1;
-                data_on_c_to_m <= 1'b0;
+                data_on_c_to_m <= 1'b1;
                 read_en_c_to_m <= 1'b0;
                 write_en_c_to_m <= 1'b1;
             end else if(write_data) begin
@@ -133,6 +133,7 @@ module fpga_mem_controller(
                 latch_bmem_rdata = 1'b1;
             end else if(bmem_write) begin
                 state_next = WRITE_ADDR;
+                latch_bmem_rdata = 1'b1;
             end else begin  
                 state_next = state_next;
             end
@@ -228,6 +229,7 @@ module fpga_mem_controller(
             if(bmem_write) begin
                 state_next = state_next;
             end else begin
+                unlatch_bmem_rdata = 1'b1;
                 state_next = IDLE;
             end
         end
