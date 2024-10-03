@@ -357,6 +357,8 @@ always_comb begin : state_signals
 
                     if(ufp_addr == this_address_locked_by_you && amo) unlock = 1'b1;
 
+                    if(amo) ufp_rdata = 32'h0000_0000;
+
                 end
 
                 ufp_resp = mask_ufp_resp ? 1'b0 : 1'b1;

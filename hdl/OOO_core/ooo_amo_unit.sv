@@ -1,4 +1,4 @@
-module amo_unit (
+module ooo_amo_unit (
 
     input logic clk,                 // Clock signal
     input logic rst,                 // Reset signal
@@ -23,14 +23,18 @@ module amo_unit (
 );
 
     // Define states in lowercase
-    enum logic [2:0] {
+    enum logic [3:0] {
         idle ,
         load ,
         calc ,
         store,
         done,
         lwr,
-        swc 
+        swc,
+        load1,
+        lwr1,
+        swc1,
+        store1 
     } state, next_state;
 
     logic [31:0] loaded_value, computed_value;
@@ -50,7 +54,7 @@ module amo_unit (
 
             // Retain loaded_value and computed_value across states
             case (state)
-                load: begin
+                load1: begin
                     // Capture the memory value during load state
                     loaded_value <= mem_data_in;
                 end
@@ -58,7 +62,7 @@ module amo_unit (
                     // Perform the calculation during calc state
                     case (amo_funct[6:2])
                         5'b00010 : computed_value <= '0;
-                        5'b00010 : computed_value <= amo_operand;
+                        5'b00011 : computed_value <= amo_operand;
                         5'b00000 : computed_value <= loaded_value + amo_operand;  // AMO ADD
                         5'b01100 : computed_value <= loaded_value & amo_operand;  // AMO AND
                         5'b01000 : computed_value <= loaded_value | amo_operand;  // AMO OR
@@ -86,7 +90,7 @@ module amo_unit (
         case (state)
             idle: begin
                 if (amo_valid) begin
-                    mem_read = (amo_funct[6:2] == 5'b00011) ? 1'b0 : 1'b1;
+                    //mem_read = (amo_funct[6:2] == 5'b00011) ? 1'b0 : 1'b1;
                     if(amo_funct[6:2] == 5'b00010) next_state = lwr;
                     else if(amo_funct[6:2] == 5'b00011) next_state = swc;
                     else next_state = load;
@@ -97,14 +101,30 @@ module amo_unit (
                 mem_read = 1'b1;
                 lock = 1'b1;
                 locked_address = address_to_lock;
-                if (mem_resp) next_state = calc;
+                next_state = load1;
+            end
+
+            load1 : begin
+                mem_read = 1'b0;
+                lock = 1'b1;
+                locked_address = address_to_lock;
+                if(mem_resp) next_state = calc;
+                else next_state = load1;
             end
 
             lwr : begin
                 mem_read = 1'b1;
                 lock = 1'b1;
                 locked_address = address_to_lock;
+                next_state = lwr1;
+            end
+
+            lwr1 : begin
+                mem_read = 1'b0;
+                lock = 1'b1;
+                locked_address = address_to_lock;
                 if(mem_resp) next_state = done;
+                else next_state = lwr1;
             end
 
             calc: begin
@@ -114,13 +134,27 @@ module amo_unit (
             store: begin
                 mem_write = 1'b1;
                 mem_data_out = computed_value;
-                if (mem_resp) next_state = done;
+                next_state = store1;
+            end
+
+            store1: begin
+                mem_write = 1'b0;
+                mem_data_out = computed_value;
+                if(mem_resp) next_state = done;
+                else next_state = store1;
             end
 
             swc : begin
                 mem_write = 1'b1;
                 mem_data_out = amo_operand;
-                if (mem_resp) next_state = done;
+                next_state = swc1;
+            end
+
+            swc1: begin
+                mem_write = 1'b0;
+                mem_data_out = amo_operand;
+                if(mem_resp) next_state = done;
+                else next_state = swc1;
             end
 
             done: begin

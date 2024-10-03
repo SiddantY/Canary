@@ -336,6 +336,15 @@ package rv32i_types;
             bit [6:0] opcode;
         } j_type;
 
+        struct packed {
+            bit [6:0] funct7;
+            bit [6:0] rs2;
+            bit [6:0] rs1;
+            bit [2:0] funct3;
+            bit [6:0] rd;
+            bit [6:0] opcode;
+        } a_type;
+
     } instr_t;
 
     typedef struct packed {
@@ -358,6 +367,10 @@ package rv32i_types;
         bit [31:0] imm;
         bit [63:0] order;
         bit [31:0] inst;
+
+        // amo stuff
+        bit        amo;
+        bit [6:0]  funct7;
         // bit brats_full;
         // bit [$clog2(NUM_BRATS)-1:0] current_brat;
     } ld_st_queue_t;

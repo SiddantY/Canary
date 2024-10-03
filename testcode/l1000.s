@@ -9,7 +9,7 @@ _start:
 
 # Initialize registers
 li x5, 1000        # Loop counter initialized to 1000
-li x6, 0x60000100     # Load address of my_data into x6
+li x6, 0x60000200     # Load address of my_data into x6
 
 li x8, 0xDEADBEEF
 sw x8, 0(x6)
@@ -21,6 +21,7 @@ nop
 nop
 
 loop:
+    li x8, 0xDEADBEEF
     li x8, 0xDEADBEEF
     lw x7, 0(x6)     # Load word from memory address x6 into x7
     addi x5, x5, -1  # Decrement loop counter x5

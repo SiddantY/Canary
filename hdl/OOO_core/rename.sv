@@ -83,6 +83,14 @@ always_comb
                     renamed_instruction.j_type.imm = instruction[31:12];
                     renamed_instruction.j_type.extra = '0;
                 end
+            op_b_atom: begin
+                    renamed_instruction.a_type.opcode = opcode;
+                    renamed_instruction.a_type.rd = physical_rd;
+                    renamed_instruction.a_type.funct3 = instruction[14:12];
+                    renamed_instruction.a_type.rs1 = physical_rs1;
+                    renamed_instruction.a_type.rs2 = physical_rs2;
+                    renamed_instruction.a_type.funct7 = instruction[31:25];
+            end
             default: renamed_instruction = 'x;
         endcase
 
@@ -136,7 +144,7 @@ always_comb
                     arch_rs1  = instruction[19:15];
                     arch_rs2  = '0;
                 end
-            op_b_reg: 
+            op_b_reg, op_b_atom: 
                 begin
                     arch_rd   = instruction[11:7];
                     arch_rs1  = instruction[19:15];

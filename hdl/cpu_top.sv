@@ -49,6 +49,9 @@ logic        ppl_lock;
 
 logic ppl_amo;
 
+logic ooo_amo, ooo_lock;
+logic [31:0] ooo_locked_address;
+
 
 ooo_cpu ooo(
     .clk            (clk),
@@ -70,7 +73,11 @@ ooo_cpu ooo(
 
     .flush(flush),
     .jump_en(jump_en),
-    .jalr_done(jalr_done)
+    .jalr_done(jalr_done),
+
+    .amo(ooo_amo),
+    .address_to_lock(ooo_locked_address),
+    .lock(ooo_lock)
 );
 
 pipeline_cpu ppl(
@@ -116,9 +123,9 @@ memory memory_unit(
     .ooo_dmem_wdata(ooo_dmem_wdata),
     .ooo_dmem_resp(ooo_dmem_resp),
 
-    .ooo_locked_address('0),
-    .ooo_lock('0),
-    .ooo_amo('0),
+    .ooo_locked_address(ooo_locked_address),
+    .ooo_lock(ooo_lock),
+    .ooo_amo(ooo_amo),
 
     .ppl_imem_addr(ppl_imem_addr),
     .ppl_imem_rmask(ppl_imem_rmask),

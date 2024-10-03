@@ -14,7 +14,7 @@ import rv32i_types::*;
     output  logic           reg_available
 );
 
-logic [NUM_REGS:0] free_list_bit_vector;
+logic [NUM_REGS-1:0] free_list_bit_vector;
 logic [$clog2(NUM_REGS)-1:0] free_list_ptr;
 
 assign free_reg = (arch_rd == 5'd0) ? 6'd0 : free_list_ptr;

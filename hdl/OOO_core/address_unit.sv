@@ -31,7 +31,12 @@ import rv32i_types::*;
     output ld_st_queue_t ld_st_queue_data_out_latch,
     
     //flush
-    input logic flush
+    input logic flush,
+
+
+    output  logic           amo,
+    output  logic   [31:0]  address_to_lock,
+    output  logic           lock
 );
 
 ld_st_queue_t ld_st_queue_data_in;
@@ -56,6 +61,37 @@ logic latcgh_regs;
 logic [31:0] dmem_sum;
 logic dmem_cout;
 
+// Atomic VARS
+
+logic amo_mem_read, amo_mem_write, amo_done;
+logic [31:0] amo_data_out, dmem_rdata_latch, dmem_st_sig;
+
+assign amo = (ld_st_queue_data_out_latch.amo);
+
+always_ff @(posedge clk) begin
+
+    if(rst) begin
+        dmem_rdata_latch <= '0;
+    end else begin
+        if(dmem_resp && dmem_rmask_latch != '0 && dmem_wmask_latch == '0) begin
+            dmem_rdata_latch <= dmem_rdata;
+        end
+    end
+
+end
+
+always_ff @(posedge clk) begin
+
+    if(rst) begin
+        dmem_st_sig <= '0;
+    end else begin
+        if(dmem_resp && dmem_wmask_latch != '0 && amo) begin
+            dmem_st_sig <= dmem_rdata;
+        end
+    end
+
+end
+
 always_ff @(posedge clk)
     begin
         if(rst | flush)
@@ -76,25 +112,43 @@ always_ff @(posedge clk)
             end
         else
             begin
-                if(dmem_resp)
+                if(dmem_resp && ld_st_queue_data_out_latch.amo != 1'b1)
                     begin
                         mem_ready <= 1'b1;
                         ld_st_queue_data_out_latch <= 'x;
                     end
+                else if(amo_done && ld_st_queue_data_out_latch.amo == 1'b1) begin
+                    mem_ready <= 1'b1;
+                    ld_st_queue_data_out_latch <= 'x;
+                end
                 
-                if(ld_st_q_read_resp)
-                    begin
+                if(ld_st_q_read_resp) begin
                         mem_ready <= /*(~mem_ready && dmem_resp) ? 1'b1 :*/ 1'b0;
                         ld_st_queue_data_out_latch <= ld_st_queue_data_out;
                         dmem_addr_latch <= dmem_addr_full;
                         dmem_wdata_latch <= dmem_wdata;
-                        dmem_rmask_latch <= dmem_rmask;
-                        dmem_wmask_latch <= dmem_wmask;
+                        dmem_rmask_latch <= ld_st_queue_data_out.opcode == op_b_atom ? '0 : dmem_rmask;
+                        dmem_wmask_latch <= ld_st_queue_data_out.opcode == op_b_atom ? '0 : dmem_wmask;
                         pr1_val_ldst_latch <= pr1_val_ldst;
                         pr2_val_ldst_latch <= pr2_val_ldst;
                     end
+                    
+                else if (amo_mem_read) begin
+
+                    dmem_rmask_latch <= '1;
+                    dmem_addr_latch <= pr1_val_ldst_latch;
+
+                end else if (amo_mem_write) begin
+
+                    dmem_wmask_latch <= '1;
+                    dmem_addr_latch <= pr1_val_ldst_latch;
+                    dmem_wdata_latch <= amo_data_out;
+
+                end
             end
     end
+
+
 
 always_comb begin : memReadyStuff
     
@@ -112,19 +166,28 @@ always_comb
         */
         ld_st_queue_data_in.opcode = instruction[6:0];
         ld_st_queue_data_in.funct3 = instruction[6:0] == op_b_load ? renamed_instruction.i_type.funct3 : renamed_instruction.s_type.funct3;
+        
         ld_st_queue_data_in.pr1_s_ld_st = instruction[19:15] == 5'd0 ? 6'd0 : (renamed_instruction.i_type.opcode == op_b_store) ? renamed_instruction.s_type.rs1 : renamed_instruction.i_type.rs1;
         ld_st_queue_data_in.rs1_ready = phys_valid_vector[ld_st_queue_data_in.pr1_s_ld_st];
         ld_st_queue_data_in.arch_rs1 = instruction[19:15];
-        ld_st_queue_data_in.pr2_s_ld_st = instruction[6:0] == op_b_load ? 6'b0 : renamed_instruction.s_type.rs2;
+        
+        ld_st_queue_data_in.pr2_s_ld_st = instruction[6:0] == op_b_load ? 6'b0 : (instruction[6:0] == op_b_atom) ? renamed_instruction.a_type.rs2 : renamed_instruction.s_type.rs2;
         ld_st_queue_data_in.rs2_ready = phys_valid_vector[ld_st_queue_data_in.pr2_s_ld_st];
         ld_st_queue_data_in.arch_rs2 = instruction[6:0] == op_b_load ? 5'b0 : instruction[24:20];
-        ld_st_queue_data_in.phys_rd = instruction[6:0] == op_b_load ? renamed_instruction.i_type.rd : 6'b0;
-        ld_st_queue_data_in.arch_rd = instruction[6:0] == op_b_load ? instruction[11:7] : 5'b0;
+        
+
+        ld_st_queue_data_in.phys_rd = instruction[6:0] == op_b_load ? renamed_instruction.i_type.rd : instruction[6:0] == op_b_atom ? renamed_instruction.a_type.rd : 6'b0;
+        ld_st_queue_data_in.arch_rd = instruction[6:0] == op_b_load || instruction[6:0] == op_b_atom ? instruction[11:7] : 5'b0;
+        
         ld_st_queue_data_in.rob_index = rob_index;
         ld_st_queue_data_in.pc = instruction[63:32];
         ld_st_queue_data_in.imm = instruction[6:0] == op_b_load ? {{21{instruction[31]}}, instruction[30:20]} : {{21{instruction[31]}}, instruction[30:25], instruction[11:7]};
         ld_st_queue_data_in.order = order;
         ld_st_queue_data_in.inst = instruction[31:0];
+        
+        // amo 
+        ld_st_queue_data_in.amo = instruction[6:0] == op_b_atom ? 1'b1 : 1'b0;
+        ld_st_queue_data_in.funct7 = renamed_instruction.a_type.funct7;
 
         dmem_addr = '0;
         dmem_rmask = '0;
@@ -176,6 +239,17 @@ always_comb
                 dmem_wmask = '0;
 
                 dmem_wdata = '0;
+            end 
+        else if (ld_st_queue_data_out_latch.amo == 1'b1 && amo_mem_read) 
+            begin
+                dmem_addr = pr1_val_ldst_latch;
+                dmem_rmask = 4'hF;
+            end
+        else if (ld_st_queue_data_out_latch.amo == 1'b1 && amo_mem_write) 
+            begin
+                dmem_addr = pr1_val_ldst_latch;
+                dmem_wmask = 4'hF;
+                dmem_wdata = amo_data_out;
             end
         
         
@@ -191,6 +265,15 @@ always_comb
                     default: execute_outputs_ldst.phys_rd_val = 'x;
                 endcase
             end
+        else if(ld_st_queue_data_out_latch.opcode == op_b_atom && ld_st_queue_data_out_latch.funct7[6:2] == 5'b00011)
+            begin
+                execute_outputs_ldst.phys_rd_val = dmem_st_sig;
+            end
+        else if(ld_st_queue_data_out_latch.opcode == op_b_atom && ld_st_queue_data_out_latch.funct7[6:2] == 5'b00010) begin
+                execute_outputs_ldst.phys_rd_val = dmem_rdata_latch; 
+        end else if(ld_st_queue_data_out_latch.opcode == op_b_atom) begin
+            execute_outputs_ldst.phys_rd_val = dmem_rdata_latch;
+        end
         else
             begin
                 execute_outputs_ldst.phys_rd_val = '0;
@@ -198,11 +281,11 @@ always_comb
                 
         
         execute_outputs_ldst.rob_index = ld_st_queue_data_out_latch.rob_index;
-        execute_outputs_ldst.regf_we = (ld_st_queue_data_out_latch.opcode == op_b_load && dmem_resp) ? 1'b1 : 1'b0;
+        execute_outputs_ldst.regf_we = (ld_st_queue_data_out_latch.opcode == op_b_load && dmem_resp || ld_st_queue_data_out_latch.opcode == op_b_atom && amo_done) ? 1'b1 : 1'b0;
 
         // if a load and store not a valid thing to update the rat, prf, rob. 0 is ld/st, 1 is alu/cmp
         execute_outputs_ldst.alu_or_cmp_op = 1'b0;
-        execute_outputs_ldst.execute_valid = dmem_resp && ld_st_queue_data_out_latch.inst != '0;
+        execute_outputs_ldst.execute_valid = (dmem_resp && ld_st_queue_data_out_latch.inst != '0 && ld_st_queue_data_out_latch.amo != 1'b1) || (amo_done && ld_st_queue_data_out_latch.amo == 1'b1);
         execute_outputs_ldst.arch_rd = ld_st_queue_data_out_latch.arch_rd;
         
         // rvfi
@@ -215,13 +298,13 @@ always_comb
         execute_outputs_ldst.rvfi.rs2_rdata = pr2_val_ldst_latch;
         execute_outputs_ldst.rvfi.rd_addr = ld_st_queue_data_out_latch.arch_rd;
 
-        execute_outputs_ldst.rvfi.rd_wdata = (ld_st_queue_data_out_latch.opcode == op_b_load) ? execute_outputs_ldst.phys_rd_val : '0;
+        execute_outputs_ldst.rvfi.rd_wdata = (ld_st_queue_data_out_latch.opcode == op_b_load || ld_st_queue_data_out_latch.opcode == op_b_atom) ? execute_outputs_ldst.phys_rd_val : '0;
         execute_outputs_ldst.rvfi.pc_rdata = ld_st_queue_data_out_latch.pc;
         execute_outputs_ldst.rvfi.pc_wdata = ld_st_queue_data_out_latch.pc + 32'h4;
         execute_outputs_ldst.rvfi.mem_addr = {dmem_addr_latch[31:2], 2'b00};
         execute_outputs_ldst.rvfi.mem_rmask = dmem_rmask_latch;
         execute_outputs_ldst.rvfi.mem_wmask = dmem_wmask_latch;
-        execute_outputs_ldst.rvfi.mem_rdata = dmem_rdata;
+        execute_outputs_ldst.rvfi.mem_rdata = (ld_st_queue_data_out_latch.opcode == op_b_atom) ? dmem_rdata_latch : dmem_rdata;
         execute_outputs_ldst.rvfi.mem_wdata = dmem_wdata_latch;
 end
 
@@ -254,6 +337,26 @@ carry_look_ahead_adder jalr_addr(
 	.a(pr1_val_ldst),
     .b(ld_st_queue_data_out.imm),
     .cin(1'b0)
+);
+
+ooo_amo_unit amo_unit_ooo (
+
+    .clk(clk),                 
+    .rst(rst),                 
+    .amo_valid(ld_st_queue_data_out_latch.amo),
+    .mem_data_in(dmem_rdata),                                   // Data read from memory
+    .amo_operand(pr2_val_ldst_latch),                                             // Operand for AMO operation -- This is rs2_value
+    .amo_funct(ld_st_queue_data_out_latch.funct7),              // AMO function code (e.g., ADD, AND, OR, XOR)
+
+    .mem_resp(dmem_resp),
+
+    .mem_data_out(amo_data_out),                                // Data to write to memory
+    .amo_done(amo_done),                                        // Flag indicating AMO completion
+    .mem_read(amo_mem_read),                                    // Control signal for memory read
+    .mem_write(amo_mem_write),                                  // Control signal for memory write
+    .locked_address(address_to_lock),
+    .lock(lock),
+    .address_to_lock(dmem_addr_latch)
 );
 
 endmodule

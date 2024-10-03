@@ -50,7 +50,11 @@ import rv32i_types::*;
     output  logic   [3:0]   dmem_wmask,
     input   logic   [31:0]  dmem_rdata,
     output  logic   [31:0]  dmem_wdata,
-    input   logic           dmem_resp
+    input   logic           dmem_resp,
+
+    output  logic           amo,
+    output  logic   [31:0]  address_to_lock,
+    output  logic           lock
 );
 /*
 Bookkeeping
@@ -397,7 +401,7 @@ address_unit address_unit_dec1(
 
     .renamed_instruction(renamed_instruction), // decode
     .instruction(instruction),
-    .valid_instruction(read_resp && (instruction[6:0] == op_b_load || instruction[6:0] == op_b_store)),
+    .valid_instruction(read_resp && (instruction[6:0] == op_b_load || instruction[6:0] == op_b_store  || instruction[6:0] == op_b_atom)),
     .rob_index(instruction_to_rob_index), // decode
 
     .pr1_s_ldst(pr1_s_ldst), // output
@@ -418,7 +422,11 @@ address_unit address_unit_dec1(
 
     // bookkeeping extras
     .order(order), // decode 
-    .ld_st_queue_data_out_latch(ld_st_queue_data_out_latch)
+    .ld_st_queue_data_out_latch(ld_st_queue_data_out_latch),
+
+    .amo(amo),
+    .address_to_lock(address_to_lock),
+    .lock(lock)
 );
 
 logic [2:0] index_to_execute;

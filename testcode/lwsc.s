@@ -8,12 +8,12 @@
 _start:
 
 # Initialize registers
-li x5, 0x60000100     # Load address of shared_var into x5
+li x5, 0x60000200     # Load address of shared_var into x5
 li x6, 42             # Value to store
 li x7, 0              # Initialize status register
 
 # Initialize shared_var to 0
-li x8, 0
+li x8, 0x5
 sw x8, 0(x5)
 
 # Atomic store using LR/SC

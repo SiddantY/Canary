@@ -15,6 +15,9 @@ import rv32i_types::*;
     output  logic   [31:0]      dmem_wdata,
 
     output  logic               dstall,
+
+    input   logic               istall,
+
     output  mem_wb_reg_t        mem_wb_reg_next,
 
     output  logic   [31:0]      locked_address,

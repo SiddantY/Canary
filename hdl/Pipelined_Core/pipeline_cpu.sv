@@ -227,6 +227,9 @@ mem_stage mem_stage_dec_1
     .dmem_wdata(dmem_wdata),
 
     .dstall(dstall),
+
+    .istall(istall),
+
     .mem_wb_reg_next(mem_wb_reg_next),
 
     .locked_address(locked_address),

@@ -21,7 +21,7 @@ import rv32i_types::*;
     output  logic   [3:0]       dmem_wmask,
     input   logic   [31:0]      dmem_rdata,
     output  logic   [31:0]      dmem_wdata,
-    input   logic               dmem_resp
+    input   logic               dmem_resp,
 
     // Single memory port connection when caches are integrated into design (CP3 and after)
     
@@ -34,6 +34,10 @@ import rv32i_types::*;
     // input logic   [31:0]      bmem_raddr,
     // input logic   [63:0]      bmem_rdata,
     // input logic               bmem_rvalid
+
+    output  logic           amo,
+    output  logic   [31:0]  address_to_lock,
+    output  logic           lock
     
 );
 
@@ -160,7 +164,11 @@ import rv32i_types::*;
         .dmem_wmask(dmem_wmask),
         .dmem_rdata(dmem_rdata),
         .dmem_wdata(dmem_wdata),
-        .dmem_resp(dmem_resp)
+        .dmem_resp(dmem_resp),
+
+        .amo(amo),
+        .address_to_lock(address_to_lock),
+        .lock(lock)
     );
 
     // arbiter arbiter( // ASSERTS ADDR UNTIL DATA IS RECIEVED, 1 CACHE QUERY AT A TIME
