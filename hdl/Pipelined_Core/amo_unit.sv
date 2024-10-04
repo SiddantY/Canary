@@ -7,6 +7,8 @@ module amo_unit (
     input logic [31:0] amo_operand,  // Operand for AMO operation
     input logic [6:0] amo_funct,     // AMO function code (e.g., ADD, AND, OR, XOR)
 
+
+    input logic       istall,       // For pipeline stalls
     input logic       mem_resp,
 
     output logic [31:0] mem_data_out,// Data to write to memory
@@ -126,7 +128,7 @@ module amo_unit (
             done: begin
                 amo_done = 1'b1;
                 mem_data_out = computed_value;
-                next_state = idle;
+                if (!istall) next_state = idle;
             end
 
             default: next_state = idle;

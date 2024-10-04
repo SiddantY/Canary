@@ -54,22 +54,27 @@ end
 
 
 logic p2o; // (prevent_twice_occurance) this is used so that magic mem doesn't respond twice 1 address due to keeping the address up
+logic amo_in_progress;
+
 always_ff @(posedge clk)
     begin : d_no_rep
 
         if(rst)
             begin
                 p2o <= 1'b0;
+                amo_in_progress <= 1'b0;
             end
         else
             begin
+
+                amo_in_progress <= amo_valid;
 
                 if((ex_mem_reg.mem_read | ex_mem_reg.mem_write | amo_valid) && ex_mem_reg.rvfi.monitor_valid) // load instruction stall til response
                     begin
                         p2o <= 1'b1;
                     end
                 
-                if(dmem_resp) // response set stall to low
+                if(dmem_resp | amo_done) // response set stall to low
                     begin
                         p2o <= 1'b0;
                     end
@@ -161,10 +166,11 @@ always_comb
                 dmem_wmask_holder = (ex_mem_reg.opcode == op_b_atom && ex_mem_reg.funct7[6:2] != 5'b00010) ? 4'b1111 : 4'b0000;
                 dmem_wdata_holder = (ex_mem_reg.opcode == op_b_atom && ex_mem_reg.funct7[6:2] != 5'b00010) ? mem_data_out : '0;
 
-        end else
-            begin
-                dmem_wmask_holder = '0;
-            end
+        end else begin
+
+            dmem_wmask_holder = '0;
+
+        end
 
         dmem_addr = '0;
         dmem_rmask = '0;
@@ -279,6 +285,7 @@ amo_unit ppl_amo_unit (
     .amo_operand(ex_mem_reg.rs2_v),     // Operand for AMO operation -- This is rs2_value
     .amo_funct(amo_funct),              // AMO function code (e.g., ADD, AND, OR, XOR)
 
+    .istall(istall),
     .mem_resp(dmem_resp),
 
     .mem_data_out(mem_data_out),// Data to write to memory

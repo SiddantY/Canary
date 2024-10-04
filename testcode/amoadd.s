@@ -21,7 +21,7 @@ li x8, 10
 # Atomic addition
 amo_add:
     amoadd.w x7, x6, 0(x5)  # Atomically add x6 to shared_var; old value in x7
-
+    
 # At this point, shared_var should be 15
 
 halt:
