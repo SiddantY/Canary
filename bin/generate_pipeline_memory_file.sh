@@ -11,7 +11,7 @@ TARGET_DIR=$SH_LOCATION/../sim/sim
 ASSEMBLER=riscv32-unknown-elf-gcc
 OBJCOPY=riscv32-unknown-elf-objcopy
 OBJDUMP=riscv32-unknown-elf-objdump
-LINK_FILE=$SH_LOCATION/link.ld
+LINK_FILE=$SH_LOCATION/link1.ld
 START_FILE=$SH_LOCATION/startup.s
 MEM_LST_START_ADDR="0x70000000" # in bytes
 

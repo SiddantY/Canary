@@ -74,7 +74,7 @@ always_ff @(posedge clk)
                         p2o <= 1'b1;
                     end
                 
-                if(dmem_resp | amo_done) // response set stall to low
+                if(dmem_resp) // response set stall to low
                     begin
                         p2o <= 1'b0;
                     end
