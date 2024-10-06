@@ -74,6 +74,7 @@ always_comb
             op_b_br: a = r1_val;
             op_b_load: a = r1_val;
             op_b_store: a = r1_val;
+            op_b_atom:  a = r1_val;
             op_b_imm: a = r1_val;
             op_b_reg: a = r1_val;
             default: a = '0;
@@ -125,6 +126,10 @@ always_comb
         ex_mem_reg_next.rs2_v = r2_val;
         ex_mem_reg_next.rd_s = id_ex_reg.rd_s;
         ex_mem_reg_next.funct3 = id_ex_reg.funct3;
+
+        ex_mem_reg_next.opcode = id_ex_reg.opcode;
+
+        ex_mem_reg_next.funct7 = id_ex_reg.funct7;
 
         // rvfi signals
         ex_mem_reg_next.rvfi.monitor_valid = id_ex_reg.rvfi.monitor_valid;

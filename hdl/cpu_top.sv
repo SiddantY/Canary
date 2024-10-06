@@ -2,15 +2,15 @@ module cpu_top(
     input   logic clk,
     input   logic rst,
 
-    output logic   [31:0]      bmem_addr,
-    output logic               bmem_read,
-    output logic               bmem_write,
-    output logic   [63:0]      bmem_wdata,
+    // output logic   [31:0]      bmem_addr,
+    // output logic               bmem_read,
+    // output logic               bmem_write,
+    // output logic   [63:0]      bmem_wdata,
     
-    input logic               bmem_ready,
-    input logic   [31:0]      bmem_raddr,
-    input logic   [63:0]      bmem_rdata,
-    input logic               bmem_rvalid,
+    // input logic               bmem_ready,
+    // input logic   [31:0]      bmem_raddr,
+    // input logic   [63:0]      bmem_rdata,
+    // input logic               bmem_rvalid,
 
     // Memory -> Controller
     input logic [31:0] address_data_bus_m_to_c,
@@ -53,21 +53,32 @@ logic           ppl_dmem_resp;
 
 logic flush, jump_en, jalr_done;
 
+// AMO INSTRUCTION SIGNALS
 
-// logic   [31:0]      bmem_addr;
-// logic               bmem_read;
-// logic               bmem_write;
-// logic   [63:0]      bmem_wdata;
+logic [31:0] ppl_locked_address;
+logic        ppl_lock;
 
-// logic               bmem_ready;
-// logic   [31:0]      bmem_raddr;
-// logic   [63:0]      bmem_rdata;
-// logic               bmem_rvalid;
+logic ppl_amo;
 
-logic               copy_bmem_ready;
-logic   [31:0]      copy_bmem_raddr;
-logic   [63:0]      copy_bmem_rdata;
-logic               copy_bmem_rvalid;
+logic ooo_amo, ooo_lock;
+logic [31:0] ooo_locked_address;
+
+
+
+logic   [31:0]      bmem_addr;
+logic               bmem_read;
+logic               bmem_write;
+logic   [63:0]      bmem_wdata;
+
+logic               bmem_ready;
+logic   [31:0]      bmem_raddr;
+logic   [63:0]      bmem_rdata;
+logic               bmem_rvalid;
+
+// logic               copy_bmem_ready;
+// logic   [31:0]      copy_bmem_raddr;
+// logic   [63:0]      copy_bmem_rdata;
+// logic               copy_bmem_rvalid;
 
 
 ooo_cpu ooo(
@@ -90,7 +101,11 @@ ooo_cpu ooo(
 
     .flush(flush),
     .jump_en(jump_en),
-    .jalr_done(jalr_done)
+    .jalr_done(jalr_done),
+
+    .amo(ooo_amo),
+    .address_to_lock(ooo_locked_address),
+    .lock(ooo_lock)
 );
 
 pipeline_cpu ppl(
@@ -107,7 +122,11 @@ pipeline_cpu ppl(
     .dmem_wmask(ppl_dmem_wmask),
     .dmem_rdata(ppl_dmem_rdata),
     .dmem_wdata(ppl_dmem_wdata),
-    .dmem_resp(ppl_dmem_resp)
+    .dmem_resp(ppl_dmem_resp),
+
+    .locked_address(ppl_locked_address),
+    .lock(ppl_lock),
+    .amo(ppl_amo)
 );
 logic wburst_counter;
 memory memory_unit(
@@ -132,6 +151,10 @@ memory memory_unit(
     .ooo_dmem_wdata(ooo_dmem_wdata),
     .ooo_dmem_resp(ooo_dmem_resp),
 
+    .ooo_locked_address(ooo_locked_address),
+    .ooo_lock(ooo_lock),
+    .ooo_amo(ooo_amo),
+
     .ppl_imem_addr(ppl_imem_addr),
     .ppl_imem_rmask(ppl_imem_rmask),
     .ppl_imem_rdata(ppl_imem_rdata),
@@ -144,15 +167,19 @@ memory memory_unit(
     .ppl_dmem_wdata(ppl_dmem_wdata),
     .ppl_dmem_resp(ppl_dmem_resp),
 
+    .ppl_locked_address(ppl_locked_address),
+    .ppl_lock(ppl_lock),
+    .ppl_amo(ppl_amo),
+
     .bmem_addr(bmem_addr),
     .bmem_read(bmem_read),
     .bmem_write(bmem_write),
     .bmem_wdata(bmem_wdata),
     
-    .bmem_ready(copy_bmem_ready),
-    .bmem_raddr(copy_bmem_raddr),
-    .bmem_rdata(copy_bmem_rdata),
-    .bmem_rvalid(copy_bmem_rvalid),
+    .bmem_ready(bmem_ready),
+    .bmem_raddr(bmem_raddr),
+    .bmem_rdata(bmem_rdata),
+    .bmem_rvalid(bmem_rvalid),
     .wburst_counter(wburst_counter)
 );
 
@@ -168,10 +195,10 @@ fpga_mem_controller fpga_mem_controller(
     .bmem_wdata(bmem_wdata),
 
     // Controller -> Caches
-    .bmem_ready(copy_bmem_ready),
-    .bmem_raddr(copy_bmem_raddr),
-    .bmem_rdata(copy_bmem_rdata),
-    .bmem_rvalid(copy_bmem_rvalid),
+    .bmem_ready(bmem_ready),
+    .bmem_raddr(bmem_raddr),
+    .bmem_rdata(bmem_rdata),
+    .bmem_rvalid(bmem_rvalid),
     .wburst_counter(wburst_counter),
 
     // Memory -> Controller

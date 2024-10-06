@@ -53,6 +53,9 @@ always_ff @(posedge clk)
                         data_queue[i%QUEUE_DEPTH].order <= '0;
                         data_queue[i%QUEUE_DEPTH].inst <= '0;
 
+                        data_queue[i%QUEUE_DEPTH].amo <= '0;
+                        data_queue[i%QUEUE_DEPTH].funct7 <= '0;
+
                         data_out <= '0;
                     end
 
@@ -66,7 +69,8 @@ always_ff @(posedge clk)
             begin
                 if(read_enable && ~queue_empty && phys_valid_vector[data_queue[read_ptr].pr1_s_ld_st] && phys_valid_vector[data_queue[read_ptr].pr2_s_ld_st]) // read asserted send out first element and pop it off the queue
                     begin
-                        if(rob_head != data_queue[read_ptr].rob_index && data_queue[read_ptr].opcode == op_b_store)
+                        if(rob_head != data_queue[read_ptr].rob_index && data_queue[read_ptr].opcode == op_b_store
+                            || rob_head != data_queue[read_ptr].rob_index && data_queue[read_ptr].amo == 1'b1)
                             begin
                                 data_out <= 'x;
                                 read_resp <= 1'b0; 
@@ -99,6 +103,9 @@ always_ff @(posedge clk)
                         data_queue[write_ptr].imm <=  data_in.imm;
                         data_queue[write_ptr].order <=  data_in.order;
                         data_queue[write_ptr].inst <= data_in.inst;
+
+                        data_queue[write_ptr].amo <= data_in.amo;
+                        data_queue[write_ptr].funct7 <= data_in.funct7;
                         
                         write_ptr <= write_ptr + 1'b1;
                     end

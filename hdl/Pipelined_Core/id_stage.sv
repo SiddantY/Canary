@@ -107,6 +107,13 @@ always_comb
                     rs1_s  = inst[19:15];
                     rs2_s  = inst[24:20];
                 end
+
+            // ATOMIC Instruction
+            op_b_atom:
+                begin
+                    rs1_s  = inst[19:15];
+                    rs2_s  = inst[24:20];
+                end
             default: 
                 begin
                     rs1_s  = inst[19:15];
@@ -135,17 +142,18 @@ always_comb
         
         // immediate selector mux
         unique case(opcode)
-            op_b_lui: imm = u_imm;
+            op_b_lui:   imm = u_imm;
             op_b_auipc: imm = u_imm;
-            op_b_jal: imm = 32'h4;
-            op_b_jalr: imm = 32'h4;
-            op_b_br: imm = b_imm;
-            op_b_load: imm = i_imm;
+            op_b_jal:   imm = 32'h4;
+            op_b_jalr:  imm = 32'h4;
+            op_b_br:    imm = b_imm;
+            op_b_load:  imm = i_imm;
             op_b_store: imm = s_imm;
-            op_b_imm: imm = i_imm;
-            op_b_reg: imm = 0;
-            op_b_csr: imm = i_imm;
-            default: imm = '0;
+            op_b_imm:   imm = i_imm;
+            op_b_reg:   imm = 0;
+            op_b_csr:   imm = i_imm;
+            op_b_atom:  imm = '0;
+            default:    imm = '0;
         endcase
 
     end : immediate_generator
@@ -154,7 +162,7 @@ always_comb
     begin : control_unit
         
         unique case(opcode) // writeback / regf_we
-            op_b_lui, op_b_auipc, op_b_jal, op_b_jalr, op_b_load, op_b_imm, op_b_reg: writeback = 1'b1;
+            op_b_lui, op_b_auipc, op_b_jal, op_b_jalr, op_b_load, op_b_imm, op_b_reg, op_b_atom: writeback = 1'b1;
             op_b_store, op_b_br: writeback = 1'b0;
             default: writeback = 'x;
         endcase
@@ -172,7 +180,7 @@ always_comb
         endcase
 
         unique case(opcode) // reg = 0, imm = 1
-            op_b_store, op_b_lui, op_b_auipc, op_b_jal, op_b_jalr, op_b_load, op_b_imm: alu_src = 1'b1;
+            op_b_store, op_b_lui, op_b_auipc, op_b_jal, op_b_jalr, op_b_load, op_b_imm, op_b_atom: alu_src = 1'b1;
             op_b_br, op_b_reg: alu_src = 1'b0;
             default: alu_src = 'x;
         endcase
@@ -313,6 +321,8 @@ always_comb
         id_ex_reg_next.predicted_pc = if_id_reg.predicted_pc;
 
         id_ex_reg_next.regf_we = writeback;
+
+        id_ex_reg_next.funct7 = funct7;
 
         id_ex_reg_next.mem_read = mem_read;
         id_ex_reg_next.mem_write = mem_write;

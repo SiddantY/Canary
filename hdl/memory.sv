@@ -20,6 +20,10 @@ module memory(
     input   logic   [31:0]  ooo_dmem_wdata,
     output  logic           ooo_dmem_resp,
 
+    input   logic   [31:0]  ooo_locked_address,
+    input   logic           ooo_amo,
+    input   logic           ooo_lock,
+
     input   logic   [31:0]  ppl_imem_addr,
     input   logic   [3:0]   ppl_imem_rmask,
     output  logic   [31:0]  ppl_imem_rdata,
@@ -31,6 +35,10 @@ module memory(
     output  logic   [31:0]  ppl_dmem_rdata,
     input   logic   [31:0]  ppl_dmem_wdata,
     output  logic           ppl_dmem_resp,
+
+    input   logic   [31:0]  ppl_locked_address,
+    input   logic           ppl_amo,
+    input   logic           ppl_lock,
 
     output logic   [31:0]   bmem_addr,
     output logic            bmem_read,
@@ -108,6 +116,39 @@ always_comb begin : dmem_sigs
     end
 end
 
+// AMO STUFF
+logic ppl_unlock;
+logic ooo_unlock;
+logic [31:0] this_address_locked_by_ppl;
+logic [31:0] this_address_locked_by_ooo;
+
+// logic ooo_lock;
+// logic ppl_lock;
+
+// assign ooo_lock = ((ooo_amo) && ooo_dmem_rmask != '0) ? 1'b1 : 1'b0;
+// assign ppl_lock = ((ppl_amo) && ppl_dmem_rmask != '0) ? 1'b1 : 1'b0;
+
+// Lock Table -- needs to be revised to 16 address probably -- ROB size
+lock_table lock_table_1(
+
+    .clk(clk),
+    .rst(rst),
+
+    .ooo_locked_address(ooo_locked_address),
+    .ooo_lock(ooo_lock),
+
+    .ooo_unlock(ooo_unlock),
+
+    .ppl_locked_address(ppl_locked_address),
+    .ppl_lock(ppl_lock),
+
+    .ppl_unlock(ppl_unlock),
+
+    .this_address_locked_by_ooo(this_address_locked_by_ooo),
+    .this_address_locked_by_ppl(this_address_locked_by_ppl)
+);
+
+
 // Cache dfp signals
 logic [31:0] ooo_i_dfp_addr, ooo_d_dfp_addr, ppl_i_dfp_addr, ppl_d_dfp_addr;
 
@@ -158,8 +199,10 @@ always_ff @(posedge clk) begin : round_robin_scheduling_for_main_memory_access
 end : round_robin_scheduling_for_main_memory_access
 
 always_comb begin : next_state_for_round_robin_scheduler
-    next_state = state;
-    case (state)
+
+    next_state = servicing;
+    
+    unique case (state)
         service_ooo_i_cache : begin
             if(ooo_i_dfp_read) next_state = servicing;
             else next_state = service_ooo_d_cache;
@@ -188,6 +231,8 @@ always_comb begin : next_state_for_round_robin_scheduler
                 next_state = servicing;
             end
         end
+
+        default: next_state = servicing;
     endcase
 
 end
@@ -398,35 +443,35 @@ pipe_icache #(
     );
 
 // ooo_dcache
-cache d_cache (
-    .clk(clk),
-    .rst(rst),
+// cache d_cache (
+//     .clk(clk),
+//     .rst(rst),
 
-    .flush(1'b0),
-    .in_writeBack(in_writeBack),
-    .in_compare(in_compare),
-    // .flush_latch(flush_latch | flush | benny),
-    .flush_latch('0),
-    .in_idle(in_idle),
+//     .flush(1'b0),
+//     .in_writeBack(in_writeBack),
+//     .in_compare(in_compare),
+//     // .flush_latch(flush_latch | flush | benny),
+//     .flush_latch('0),
+//     .in_idle(in_idle),
 
-    // cpu side signals, ufp -> upward facing port
-    .ufp_addr(ooo_dmem_addr_use), // SLICE LAST 2 BITS AMAAN????                  // ufp_addr[1:0] will always be '0, that is, all accesses to the cache on UFP are 32-bit aligned
-    .ufp_rmask(ooo_dmem_rmask_use),                  // specifies which bytes of ufp_rdata the UFP will use. You may return any byte at a position whose corresponding bit in ufp_rmask is zero. A nonzero ufp_rmask indicates a read request
-    .ufp_wmask(ooo_dmem_wmask_use),                  // tells the cache which bytes out of the 4 bytes in ufp_wdata are to be written. A nonzero ufp_wmask indicates a write request.
-    .ufp_rdata(ooo_dmem_rdata_out),
-    // .ufp_rdata(dmem_rdata),
-    .ufp_wdata(ooo_dmem_wdata_use),
-    .ufp_resp(ooo_dmem_resp_out),
-    // .ufp_resp(dmem_resp),
+//     // cpu side signals, ufp -> upward facing port
+//     .ufp_addr(ooo_dmem_addr_use), // SLICE LAST 2 BITS AMAAN????                  // ufp_addr[1:0] will always be '0, that is, all accesses to the cache on UFP are 32-bit aligned
+//     .ufp_rmask(ooo_dmem_rmask_use),                  // specifies which bytes of ufp_rdata the UFP will use. You may return any byte at a position whose corresponding bit in ufp_rmask is zero. A nonzero ufp_rmask indicates a read request
+//     .ufp_wmask(ooo_dmem_wmask_use),                  // tells the cache which bytes out of the 4 bytes in ufp_wdata are to be written. A nonzero ufp_wmask indicates a write request.
+//     .ufp_rdata(ooo_dmem_rdata_out),
+//     // .ufp_rdata(dmem_rdata),
+//     .ufp_wdata(ooo_dmem_wdata_use),
+//     .ufp_resp(ooo_dmem_resp_out),
+//     // .ufp_resp(dmem_resp),
 
-    // memory side signals, dfp -> downward facing port
-    .dfp_addr(ooo_d_dfp_addr),                   // dfp_addr[4:0] should always be '0, that is, all accesses to physical memory must be 256-bit aligned.
-    .dfp_read(ooo_d_dfp_read),
-    .dfp_write(ooo_d_dfp_write),
-    .dfp_rdata(ooo_d_dfp_rdata),
-    .dfp_wdata(ooo_d_dfp_wdata),
-    .dfp_resp(ooo_d_dfp_resp)
-);
+//     // memory side signals, dfp -> downward facing port
+//     .dfp_addr(ooo_d_dfp_addr),                   // dfp_addr[4:0] should always be '0, that is, all accesses to physical memory must be 256-bit aligned.
+//     .dfp_read(ooo_d_dfp_read),
+//     .dfp_write(ooo_d_dfp_write),
+//     .dfp_rdata(ooo_d_dfp_rdata),
+//     .dfp_wdata(ooo_d_dfp_wdata),
+//     .dfp_resp(ooo_d_dfp_resp)
+// );
 
 // Pipline_icache
 
@@ -446,9 +491,174 @@ I_CACHE I_CACHE(
 
 // Pipeline_dcache
 
-D_CACHE D_CACHE( 
-    .clk        (clk),
-    .rst        (rst),
+// D_CACHE D_CACHE( 
+//     .clk        (clk),
+//     .rst        (rst),
+//     .ufp_addr   (ppl_dmem_addr),
+//     .ufp_rmask  (ppl_dmem_rmask),
+//     .ufp_wmask  (ppl_dmem_wmask),
+//     .ufp_rdata  (ppl_dmem_rdata),
+//     .ufp_wdata  (ppl_dmem_wdata),
+//     .ufp_resp   (ppl_dmem_resp),
+
+//     .dfp_addr   (ppl_d_dfp_addr),
+//     .dfp_read   (ppl_d_dfp_read),
+//     .dfp_write  (ppl_d_dfp_write),
+//     .dfp_rdata  (ppl_d_dfp_rdata),
+//     .dfp_wdata  (ppl_d_dfp_wdata),
+//     .dfp_resp   (ppl_d_dfp_resp)
+// );
+
+
+
+// TEMP DECLARATIONS FOR SNOOP BUS + SNOOP CACHES, PIPELINE CORE D-CACHE PROBABLY NEEDS TO HAVE 
+// LATCHING BEHAVIOR FOR UFP PORT
+
+logic [31:0] bus_command_address, bus_resp_addr, ooo_d_command_bus_address, ppl_d_command_bus_address;
+logic [2:0] bus_command_command, bus_resp_command, ooo_d_command_command, ppl_d_command_command;
+logic [255:0] bus_command_data, bus_resp_data, ooo_d_command_bus_data, ppl_d_command_bus_data;
+
+logic ooo_d_bus_query, ppl_d_bus_query;
+
+logic [255:0] ooo_d_bus_data, ppl_d_bus_data;
+
+logic bus_ready;
+
+logic [1:0] bus_resp;
+
+// PPL NEW D-CACHE SIGS
+logic [31:0] ppl_dmem_rdata_out;
+logic ppl_dmem_resp_out;
+
+logic [31:0] ppl_dmem_addr_latch, ppl_dmem_addr_use;
+logic [3:0] ppl_dmem_wmask_latch, ppl_dmem_rmask_latch, ppl_dmem_wmask_use, ppl_dmem_rmask_use;
+logic [31:0] ppl_dmem_wdata_latch, ppl_dmem_wdata_use;
+
+logic ooo_cache_hit, ppl_cache_hit;
+
+snoopbus snoopbus_dec_1
+(
+    .clk(clk),
+    .rst(rst),
+
+    .ooo_d_addr(ooo_d_command_bus_address),
+    .ooo_d_command(ooo_d_command_command),
+    .ooo_d_data(ooo_d_command_bus_data),
+
+    .ooo_d_bus_query(ooo_d_bus_query),
+
+    .ooo_d_bus_data(ooo_d_bus_data),
+
+    .ppl_d_addr(ppl_d_command_bus_address),
+    .ppl_d_command(ppl_d_command_command),
+    .ppl_d_data(ppl_d_command_bus_data),
+
+    .ppl_d_bus_query(ppl_d_bus_query),
+
+    .ppl_d_bus_data(ppl_d_bus_data),
+
+    .bus_command_address(bus_command_address),
+    .bus_command_command(bus_command_command),
+    .bus_command_data(bus_command_data),
+
+    .bus_resp_address(bus_resp_addr),
+    .bus_resp_command(bus_resp_command),
+    .bus_resp_data(bus_resp_data),
+
+    .ppl_cache_hit(ppl_cache_hit),
+    .ooo_cache_hit(ooo_cache_hit),
+
+    .bus_ready(bus_ready),
+    .bus_resp(bus_resp)  // 0 is no resp, 1 is hit 2 is miss   
+);
+
+// OOO D-CACHE -- SNOOPINTEGRATION
+snoopbus_d_cache ooo_d_cache
+(
+    .clk(clk),
+    .rst(rst),
+    .flush(1'b0),
+    
+    .ufp_addr(ooo_dmem_addr_use), 
+    .ufp_rmask(ooo_dmem_rmask_use),                  // specifies which bytes of ufp_rdata the UFP will use. You may return any byte at a position whose corresponding bit in ufp_rmask is zero. A nonzero ufp_rmask indicates a read request
+    .ufp_wmask(ooo_dmem_wmask_use),                  // tells the cache which bytes out of the 4 bytes in ufp_wdata are to be written. A nonzero ufp_wmask indicates a write request.
+    .ufp_rdata(ooo_dmem_rdata_out),
+    .ufp_wdata(ooo_dmem_wdata_use),
+    .ufp_resp(ooo_dmem_resp_out),
+
+    .dfp_addr(ooo_d_dfp_addr),                   // dfp_addr[4:0] should always be '0, that is, all accesses to physical memory must be 256-bit aligned.
+    .dfp_read(ooo_d_dfp_read),
+    .dfp_write(ooo_d_dfp_write),
+    .dfp_rdata(ooo_d_dfp_rdata),
+    .dfp_wdata(ooo_d_dfp_wdata),
+    .dfp_resp(ooo_d_dfp_resp),
+
+    // Incoming BUS Requests
+
+    .bus_incomming_command_address(bus_command_address),
+    .bus_incomming_command_command(bus_command_command),
+
+    // MAKING BUS OUTGOING SIGNALS
+
+    .bus_command_address(ooo_d_command_bus_address),
+    .bus_command_command(ooo_d_command_command),
+    .bus_command_data(ooo_d_command_bus_data),
+
+    .snoop_bus_query(ooo_d_bus_query),
+
+    .bus_cache_hit(ooo_cache_hit),
+
+    // BUS INCOMMING REQUEST SIGNALS
+
+    .bus_resp_addr(bus_resp_addr),
+    .bus_resp_command(bus_resp_command),
+    .bus_resp_data(bus_resp_data),
+
+    .bus_data_out(ooo_d_bus_data),               // RESPONDING TO BUS QUERY
+
+
+    // BUS STATUS SIGNALS
+    
+    .bus_ready(bus_ready),
+    .bus_resp(bus_resp),
+
+    .in_writeBack(),
+    .in_compare(),
+    .in_idle(),
+
+
+    .flush_latch(),
+
+    .amo(ooo_amo),
+
+    .this_address_locked_by_you(this_address_locked_by_ooo),
+    .this_address_locked_by_others(this_address_locked_by_ppl),
+
+    .unlock(ooo_unlock)
+
+);
+
+// PPL D-CACHE -- SNOOPINTEGRATION
+snoopbus_d_cache ppl_d_cache
+(
+    .clk(clk),
+    .rst(rst),
+    .flush(1'b0),
+
+    // .ufp_addr   (ppl_dmem_addr_use),
+    // .ufp_rmask  (ppl_dmem_rmask_use),
+    // .ufp_wmask  (ppl_dmem_wmask_use),
+    // .ufp_rdata  (ppl_dmem_rdata_out),
+    // .ufp_wdata  (ppl_dmem_wdata_use),
+    // .ufp_resp   (ppl_dmem_resp_out),
+
+    // .ufp_addr   (ppl_dmem_addr_latch),
+    // .ufp_rmask  (ppl_dmem_rmask_latch),
+    // .ufp_wmask  (ppl_dmem_wmask_latch),
+    // .ufp_rdata  (ppl_dmem_rdata_out),
+    // .ufp_wdata  (ppl_dmem_wdata_latch),
+    // .ufp_resp   (ppl_dmem_resp_out),
+
     .ufp_addr   (ppl_dmem_addr),
     .ufp_rmask  (ppl_dmem_rmask),
     .ufp_wmask  (ppl_dmem_wmask),
@@ -461,7 +671,103 @@ D_CACHE D_CACHE(
     .dfp_write  (ppl_d_dfp_write),
     .dfp_rdata  (ppl_d_dfp_rdata),
     .dfp_wdata  (ppl_d_dfp_wdata),
-    .dfp_resp   (ppl_d_dfp_resp)
+    .dfp_resp   (ppl_d_dfp_resp),
+
+    // Incoming BUS Requests
+
+    .bus_incomming_command_address(bus_command_address),
+    .bus_incomming_command_command(bus_command_command),
+
+    // MAKING BUS OUTGOING SIGNALS
+
+    .bus_command_address(ppl_d_command_bus_address),
+    .bus_command_command(ppl_d_command_command),
+    .bus_command_data(ppl_d_command_bus_data),
+
+    .snoop_bus_query(ppl_d_bus_query),
+
+    // BUS INCOMMING REQUEST SIGNALS
+
+    .bus_resp_addr(bus_resp_addr),
+    .bus_resp_command(bus_resp_command),
+    .bus_resp_data(bus_resp_data),
+
+    .bus_data_out(ppl_d_bus_data),               // RESPONDING TO BUS QUERY
+
+    .bus_cache_hit(ppl_cache_hit),
+
+    // BUS STATUS SIGNALS
+    
+    .bus_ready(bus_ready),
+    .bus_resp(bus_resp),
+
+    .in_writeBack(),
+    .in_compare(),
+    .in_idle(),
+
+
+    .flush_latch(),
+
+    .amo(ppl_amo),
+
+    .this_address_locked_by_you(this_address_locked_by_ppl),
+    .this_address_locked_by_others(this_address_locked_by_ooo),
+
+    .unlock(ppl_unlock)
+
 );
+
+// PPL D-CACHE DMEM ADDR LATCHING, NEEDS TO BE CHANGED DUE TO ROBERT CACHE OBSLESCENE
+// always_ff @( posedge clk ) begin : ppl_dmem_out_regs
+
+//     if(rst) begin
+//         ppl_dmem_rdata <= '0;
+//         ppl_dmem_resp <= '0;
+//     end else begin
+//         ppl_dmem_rdata <= ppl_dmem_rdata_out;
+//         ppl_dmem_resp <= ppl_dmem_resp_out;
+//     end
+
+// end
+
+// always_ff @( posedge clk ) begin : ppl_dmem_latching
+//     if(rst) begin
+//         ppl_dmem_addr_latch <= '0;
+//         ppl_dmem_rmask_latch <= '0;
+//         ppl_dmem_wmask_latch <= '0;
+//         ppl_dmem_wdata_latch <= '0;
+//         // cache_in_use <= 1'b0;
+//     end else begin
+
+//         if(((ppl_dmem_rmask | ppl_dmem_wmask) != '0)) begin
+//             ppl_dmem_addr_latch <= ppl_dmem_addr;
+//             ppl_dmem_rmask_latch <= ppl_dmem_rmask;
+//             ppl_dmem_wmask_latch <= ppl_dmem_wmask;
+//             ppl_dmem_wdata_latch <= ppl_dmem_wdata;
+//         end
+
+//         else if(ppl_dmem_resp_out) begin
+//             ppl_dmem_addr_latch <= '0;
+//             ppl_dmem_rmask_latch <= '0;
+//             ppl_dmem_wmask_latch <= '0;
+//             ppl_dmem_wdata_latch <= '0;
+
+//         end
+//     end
+// end
+
+// always_comb begin : ppl_dmem_sigs
+//     if((ppl_dmem_rmask | ppl_dmem_wmask) != '0 && !flush) begin
+//         ppl_dmem_addr_use = ppl_dmem_addr;
+//         ppl_dmem_rmask_use = ppl_dmem_rmask;
+//         ppl_dmem_wmask_use = ppl_dmem_wmask;
+//         ppl_dmem_wdata_use = ppl_dmem_wdata;
+//     end else begin
+//         ppl_dmem_addr_use = ppl_dmem_addr_latch;
+//         ppl_dmem_rmask_use = ppl_dmem_rmask_latch;
+//         ppl_dmem_wmask_use = ppl_dmem_wmask_latch;
+//         ppl_dmem_wdata_use = ooo_dmem_wdata_latch;
+//     end
+// end
 
 endmodule

@@ -18,7 +18,8 @@ package rv32i_types;
         op_b_imm   = 7'b0010011, // I arith ops with register/immediate operands 
         op_b_reg   = 7'b0110011, // R arith ops with register operands 
         //op_b_mul   = 7'b0110011, // R multiply operation
-        op_b_csr   = 7'b1110011  // I control and status register 
+        op_b_csr   = 7'b1110011,  // I control and status register 
+        op_b_atom  = 7'b0101111   // A Atomic Instructions
     } rv32i_op_b_t;
 
     typedef enum bit [2:0] {
@@ -37,6 +38,22 @@ package rv32i_types;
         lbu = 3'b100,
         lhu = 3'b101
     } load_funct3_t;
+
+    typedef enum bit [4:0] {
+        
+        lrw     = 5'b00010,
+        scw     = 5'b00011,
+        swapw   = 5'b00001,
+        addw    = 5'b00000,
+        xorw    = 5'b00100,
+        andw    = 5'b01100,
+        orw     = 5'b01000,
+        min     = 5'b10000,
+        max     = 5'b10100,
+        minu    = 5'b11000,
+        maxu    = 5'b11100
+
+    } atomic_funct7_t;
 
     typedef enum bit [2:0] {
         sb = 3'b000,
@@ -65,6 +82,23 @@ package rv32i_types;
         alu_or  = 3'b110,
         alu_and = 3'b111
     } alu_ops;
+
+    typedef enum bit [1:0] {
+        mesi_i = 2'b00,
+        mesi_s = 2'b01,
+        mesi_e = 2'b10,
+        mesi_m = 2'b11
+    } mesi_states_t;
+
+    typedef enum bit [2:0] {
+        no_op = 3'b000,
+        pr_rd = 3'b001,
+        pr_wr = 3'b010,
+        bus_rd = 3'b011,
+        bus_write = 3'b100,
+        bus_upgrade = 3'b101,
+        flush = 3'b110
+    } bus_operation_t;
 
     // rvfi struct
 
@@ -131,6 +165,8 @@ package rv32i_types;
 
         bit [31:0]  jalr_imm;
         bit [31:0]  jal_imm;
+
+        bit [6:0]   funct7;
         
         rvfi_data_t rvfi;
     } id_ex_reg_t;
@@ -142,6 +178,10 @@ package rv32i_types;
         bit         regf_we;
         bit         mem_read;
         bit         mem_write;
+
+        bit [6:0]   opcode;
+
+        bit [6:0]   funct7;
 
         bit [31:0]  alu_result;
         bit [31:0]  rs2_v;
@@ -157,6 +197,8 @@ package rv32i_types;
     typedef struct packed {
         
         bit         regf_we;
+
+        bit [6:0]   funct7;
 
         bit [4:0]   rd_s;
 
@@ -176,7 +218,7 @@ package rv32i_types;
     parameter ROB_SIZE = 16;
     parameter ALU_STATION_DEPTH = 16;
     parameter LD_ST_QUEUE_DEPTH = 16;
-    parameter NUM_BRATS = 16;
+    // parameter NUM_BRATS = 16;
 
     typedef struct packed {
         bit       busy; // 1
@@ -199,8 +241,8 @@ package rv32i_types;
         bit [63:0] order;
         bit [31:0] inst;
         bit branch_pred;
-        bit brats_full;
-        bit [$clog2(NUM_BRATS)-1:0] current_brat;
+        // bit brats_full;
+        // bit [$clog2(NUM_BRATS)-1:0] current_brat;
     } reservation_station_entry_t;
 
     typedef struct packed {
@@ -231,7 +273,7 @@ package rv32i_types;
         bit       alu_or_cmp_op; // 50 + 1 = 51
         bit execute_valid;
         bit branch_mismatch;
-        bit [$clog2(NUM_BRATS)-1:0] current_brat;
+        // bit [$clog2(NUM_BRATS)-1:0] current_brat;
         rvfi_commit_packet_t rvfi;
     } data_bus_package_t;
 
@@ -242,7 +284,7 @@ package rv32i_types;
         bit [$clog2(NUM_REGS)-1:0] phys_rd; // 65 +
         bit [4:0] arch_rd;
         bit branch_mismatch;
-        bit [$clog2(NUM_BRATS)-1:0] current_brat;
+        // bit [$clog2(NUM_BRATS)-1:0] current_brat;
         // rvfi_commit_packet_t rvfi;
     } rob_entry_t;
 
@@ -294,6 +336,15 @@ package rv32i_types;
             bit [6:0] opcode;
         } j_type;
 
+        struct packed {
+            bit [6:0] funct7;
+            bit [6:0] rs2;
+            bit [6:0] rs1;
+            bit [2:0] funct3;
+            bit [6:0] rd;
+            bit [6:0] opcode;
+        } a_type;
+
     } instr_t;
 
     typedef struct packed {
@@ -316,8 +367,12 @@ package rv32i_types;
         bit [31:0] imm;
         bit [63:0] order;
         bit [31:0] inst;
-        bit brats_full;
-        bit [$clog2(NUM_BRATS)-1:0] current_brat;
+
+        // amo stuff
+        bit        amo;
+        bit [6:0]  funct7;
+        // bit brats_full;
+        // bit [$clog2(NUM_BRATS)-1:0] current_brat;
     } ld_st_queue_t;
 
 
