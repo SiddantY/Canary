@@ -294,7 +294,7 @@ always_ff @(posedge clk) begin : make_sure_reads_only_high_one_cycle
         
             servicing_bmem_read <= 1'b1;
 
-        end else if(state == servicing && prev_state == service_ppl_i_cache) begin
+        end else if(state == servicing && prev_state == service_ppl_d_cache) begin
         
             if(ppl_d_dfp_read) servicing_bmem_read <= 1'b1;
 

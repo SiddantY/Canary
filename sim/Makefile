@@ -52,7 +52,7 @@ spike: $(ELF)
 .PHONY: spike1
 spike1: $(ELF)
 	mkdir -p sim
-	spike --isa=rv32imac -m0x70000000:0x20000000 --log-commits $(ELF)
+	spike --isa=rv32imac -m0x70000000:0x20000000 --log-commits $(ELF) |& tail -n +6 > sim/spike1.log
 
 .PHONY: interactive_spike
 interactive_spike: $(ELF)
