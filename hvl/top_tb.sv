@@ -136,6 +136,8 @@ module top_tb;
 
     `include "../../hvl/rvfi_reference.svh"
 
+    // logic write_flag;
+
     initial begin
         $fsdbDumpfile("dump.fsdb");
         $fsdbDumpvars(0, "+all");
@@ -144,6 +146,13 @@ module top_tb;
         rst <= 1'b0;
     end
 
+    // always_ff @(posedge clk) begin
+    //     if(rst) begin
+    //         write_flag <= 1'b0;
+    //     end else begin
+    //         if(dut.fpga_mem_controller.bmem_write) write_flag <= 1'b1;
+    //     end
+    // end
 
     always @(posedge clk) begin
         for (int unsigned i=0; i < 8; ++i) begin
@@ -159,6 +168,13 @@ module top_tb;
             repeat (50) @(posedge clk);
             $finish;
         end
+
+        // if($isunknown(dut.fpga_mem_controller.bmem_rdata) && dut.fpga_mem_controller.bmem_rvalid && write_flag) begin
+        //     repeat (50) @(posedge clk);
+        //     $finish;
+        // end
+
+
         // if (mem_itf_i.error != 0) begin
         //     repeat (5) @(posedge clk);
         //     $finish;

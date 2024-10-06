@@ -79,7 +79,7 @@ module fpga_mem_controller(
                 read_en_c_to_m <= 1'b0;
                 write_en_c_to_m <= 1'b1;
             end else if(write_data) begin
-                address_data_bus_c_to_m <= bmem_wdata[32*wburst_counter +: 32];//not 1000% guranteed
+                address_data_bus_c_to_m <= bmem_wdata[32*wburst_counter +: 32];
                 data_on_c_to_m <= 1'b1;
                 address_on_c_to_m <= 1'b0;
                 read_en_c_to_m <= 1'b0;
@@ -215,8 +215,8 @@ module fpga_mem_controller(
             end
         end
         WRITE_DONE: begin
+            write_data = 1'b1;
             if(resp_m_to_c) begin//write_resp_chan signaling write transaction is finished 
-                write_data = 1'b0;
                 // wait until bmem_write is off
                 bmem_ready = 1'b1;
                 
@@ -230,6 +230,7 @@ module fpga_mem_controller(
                 state_next = state_next;
             end else begin
                 unlatch_bmem_rdata = 1'b1;
+                write_data = 1'b0;
                 state_next = IDLE;
             end
         end
