@@ -154,4 +154,27 @@ memory memory_unit(
     .bmem_rvalid(bmem_rvalid)
 );
 
+hardware_scheduler hw_sch (
+    .clk,
+    .rst,
+
+    // Counter Enables - OOO
+
+    .mult_counter_ooo_en(),
+    .mem_op_counter_ooo_en(),
+    .flush_counter_ooo_en(),
+    .rob_full_ooo_en(),
+    .alu_op_counter_ooo_en(),
+
+    // Counter Enables - PPL
+    
+    .mult_counter_ppl_en(),
+    .mem_op_counter_ppl_en(),
+    .flush_counter_ppl_en(),
+    .rob_full_ppl_threshold(),
+    .alu_op_counter_ppl_en(),
+
+    .hardware_scheduler_en()
+);
+
 endmodule
