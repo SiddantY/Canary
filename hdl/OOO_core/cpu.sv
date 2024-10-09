@@ -23,6 +23,14 @@ import rv32i_types::*;
     output  logic   [31:0]      dmem_wdata,
     input   logic               dmem_resp,
 
+    //HW Scheduler Ports
+    output   logic               ooo_mult_counter_en,
+    output   logic               ooo_mem_op_counter_en,
+    output   logic               ooo_flush_counter_en,
+    output   logic               ooo_rob_full_en,
+    output   logic               ooo_alu_op_counter_en,
+
+    input   logic                hardware_scheduler_en,
     // Single memory port connection when caches are integrated into design (CP3 and after)
     
     // output logic   [31:0]      bmem_addr,
@@ -132,7 +140,8 @@ import rv32i_types::*;
         .pc(pc),
         .read_resp(read_resp),
         .request_new_instr(request_new_instr),
-        .pc_req(pc_req)
+        .pc_req(pc_req),
+        .hardware_scheduler_en(hardware_scheduler_en)
     );
 
     decode decode(

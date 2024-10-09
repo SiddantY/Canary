@@ -12,6 +12,7 @@ import rv32i_types::*;
     input   logic           imem_resp,
     output  logic   [31:0]  imem_addr,
     input   logic   [31:0]  imem_raddr,
+    input   logic           hardware_scheduler_en,
     // NEW ICACHE SIGS
     output  logic           input_valid,
     input   logic           imem_stall,
@@ -41,7 +42,7 @@ logic [4:0] iq_counter;
 logic iq_full_counter;
 
 assign iq_full_counter = (iq_counter == 5'b11110) ? 1'b1 : 1'b0;
-assign input_valid = 1'b1;
+assign input_valid = hardware_scheduler_en ? 1'b0 : 1'b1;
 
 
 logic [31:0] pc_prev;

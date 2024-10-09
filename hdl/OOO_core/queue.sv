@@ -11,7 +11,7 @@ module queue
 #(
     parameter   DATA_WIDTH  =   64, 
     parameter   QUEUE_DEPTH =   64,
-    parameter RD_PTR_INCR = 1
+    parameter   RD_PTR_INCR = 1
 )
 
 (

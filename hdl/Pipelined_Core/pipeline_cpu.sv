@@ -17,6 +17,15 @@ import rv32i_types::*;
     output  logic   [31:0]  dmem_wdata,
     input   logic           dmem_resp,
 
+    //HW Scheduler Ports
+    output   logic           ppl_mult_counter_en,
+    output   logic           ppl_mem_op_counter_en,
+    output   logic           ppl_flush_counter_en,
+    output   logic           ppl_rob_full_threshold,
+    output   logic           ppl_alu_op_counter_en,
+    input   logic           hardware_scheduler_en,
+
+
     output  logic   [31:0]  locked_address,
     output  logic           lock,
 
@@ -154,6 +163,8 @@ always_comb
 if_stage if_stage_dec_1(
     .clk(clk),
     .rst(rst),
+    
+    .hardware_scheduler_en(hardware_scheduler_en),
 
     .imem_addr(imem_addr),
     .imem_rmask(imem_rmask),

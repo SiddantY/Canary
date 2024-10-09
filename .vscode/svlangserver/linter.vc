@@ -1,0 +1,17 @@
+-v /home/cudia2/Desktop/ECE498HK/Canary/pkg/types.sv
++incdir+/home/cudia2/Desktop/ECE498HK/Canary/hdl
++incdir+/home/cudia2/Desktop/ECE498HK/Canary/hdl/OOO_core
++incdir+/home/cudia2/Desktop/ECE498HK/Canary/hdl/OOO_core/d_cache
++incdir+/home/cudia2/Desktop/ECE498HK/Canary/hdl/OOO_core/pipelined_i_cache
++incdir+/home/cudia2/Desktop/ECE498HK/Canary/hdl/Pipelined_Core
++incdir+/home/cudia2/Desktop/ECE498HK/Canary/hvl
++incdir+/home/cudia2/Desktop/ECE498HK/Canary/hvl/ventilator
++incdir+/home/cudia2/Desktop/ECE498HK/Canary/pkg
++incdir+/home/cudia2/Desktop/ECE498HK/Canary/hdl
++incdir+/home/cudia2/Desktop/ECE498HK/Canary/hdl/OOO_core
++incdir+/home/cudia2/Desktop/ECE498HK/Canary/hdl/OOO_core/d_cache
++incdir+/home/cudia2/Desktop/ECE498HK/Canary/hdl/OOO_core/pipelined_i_cache
++incdir+/home/cudia2/Desktop/ECE498HK/Canary/hdl/Pipelined_Core
++incdir+/home/cudia2/Desktop/ECE498HK/Canary/hvl
++incdir+/home/cudia2/Desktop/ECE498HK/Canary/hvl/ventilator
++incdir+/home/cudia2/Desktop/ECE498HK/Canary/pkg

@@ -52,13 +52,26 @@ logic ppl_amo;
 logic ooo_amo, ooo_lock;
 logic [31:0] ooo_locked_address;
 
+//OoO Counter Enables
+logic ooo_mult_counter_en;
+logic ooo_mem_op_counter_en;
+logic ooo_flush_counter_en;
+logic ooo_rob_full_en;
+logic ooo_alu_op_counter_en;
+//PPL Counter Enables
+logic ppl_mult_counter_en;
+logic ppl_mem_op_counter_en;
+logic ppl_flush_counter_en;
+logic ppl_rob_full_threshold;
+logic ppl_alu_op_counter_en;
 
+logic hardware_scheduler_en;
 ooo_cpu ooo(
     .clk            (clk),
     .rst            (rst),
 
     .imem_addr(ooo_imem_addr),
-    .input_valid(ooo_input_valid),
+    .input_valid(ooo_input_valid),//i_cache enable
     .imem_stall(ooo_imem_stall),
     .imem_rdata(ooo_imem_rdata),
     .imem_raddr(ooo_imem_raddr),
@@ -77,7 +90,17 @@ ooo_cpu ooo(
 
     .amo(ooo_amo),
     .address_to_lock(ooo_locked_address),
-    .lock(ooo_lock)
+    .lock(ooo_lock),
+
+    //HW sched ports
+    .ooo_mult_counter_en(ooo_mult_counter_en),
+    .ooo_mem_op_counter_en(ooo_mem_op_counter_en),
+    .ooo_flush_counter_en(ooo_flush_counter_en),
+    .ooo_rob_full_en(ooo_rob_full_en),
+    .ooo_alu_op_counter_en(ooo_alu_op_counter_en),
+
+    .hardware_scheduler_en(hardware_scheduler_en)
+
 );
 
 pipeline_cpu ppl(
@@ -98,7 +121,16 @@ pipeline_cpu ppl(
 
     .locked_address(ppl_locked_address),
     .lock(ppl_lock),
-    .amo(ppl_amo)
+    .amo(ppl_amo),
+
+    // Counter Enables - PPL
+    .ppl_mult_counter_en(ppl_mult_counter_en),
+    .ppl_mem_op_counter_en(ppl_mem_op_counter_en),
+    .ppl_flush_counter_en(ppl_flush_counter_en),
+    .ppl_rob_full_threshold(ppl_rob_full_threshold),
+    .ppl_alu_op_counter_en(ppl_alu_op_counter_en),
+
+    .hardware_scheduler_en(hardware_scheduler_en)
 );
 
 memory memory_unit(
@@ -152,29 +184,31 @@ memory memory_unit(
     .bmem_raddr(bmem_raddr),
     .bmem_rdata(bmem_rdata),
     .bmem_rvalid(bmem_rvalid)
+
+
 );
 
 hardware_scheduler hw_sch (
-    .clk,
-    .rst,
+    .clk(),
+    .rst(),
 
     // Counter Enables - OOO
 
-    .mult_counter_ooo_en(),
-    .mem_op_counter_ooo_en(),
-    .flush_counter_ooo_en(),
-    .rob_full_ooo_en(),
-    .alu_op_counter_ooo_en(),
+    .ooo_mult_counter_en(ooo_mult_counter_en),
+    .ooo_mem_op_counter_en(ooo_mem_op_counter_en),
+    .ooo_flush_counter_en(ooo_flush_counter_en),
+    .ooo_rob_full_en(ooo_rob_full_en),
+    .ooo_alu_op_counter_en(ooo_alu_op_counter_en),
 
     // Counter Enables - PPL
     
-    .mult_counter_ppl_en(),
-    .mem_op_counter_ppl_en(),
-    .flush_counter_ppl_en(),
-    .rob_full_ppl_threshold(),
-    .alu_op_counter_ppl_en(),
+    .ppl_mult_counter_en(ppl_mult_counter_en),
+    .ppl_mem_op_counter_en(ppl_mem_op_counter_en),
+    .ppl_flush_counter_en(ppl_flush_counter_en),
+    .ppl_rob_full_threshold(ppl_rob_full_threshold),
+    .ppl_alu_op_counter_en(ppl_alu_op_counter_en),
 
-    .hardware_scheduler_en()
+    .hardware_scheduler_en(hardware_scheduler_en)
 );
 
 endmodule

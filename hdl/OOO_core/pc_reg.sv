@@ -10,6 +10,7 @@ import rv32i_types::*;
     input   logic   [31:0]  jalr_pc,
     input   logic           flush,
     input   logic   [31:0]  missed_pc,
+    input   logic           hardware_scheduler_en,
     output  logic   [31:0]  pc, pc_prev // , pc_tmp
 );
 
@@ -26,7 +27,11 @@ always_ff @(posedge clk)
         else // pc <- pc_next yk
             begin
                 // TODO: add stalling pc on Q full
-                if(request_new_inst == 1'b1)
+                if(hardware_scheduler_en) begin
+                    pc <= flush | jump_en | jalr_done ? pc_next : pc;
+                    pc_prev <= pc_prev;
+                end
+                else if(request_new_inst == 1'b1)
                     begin
                         pc <= pc_next;
                         pc_prev <= pc;
@@ -47,6 +52,7 @@ always_ff @(posedge clk)
 
 always_comb
     begin
+
         if(br_en) // if branch pc is the branch pc
             begin
                 pc_next = pc_branch;

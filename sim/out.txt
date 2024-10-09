@@ -1,0 +1,126 @@
+mkdir -p sim
+python3 check_sus.py
+python3 ../bin/rvfi_reference.py
+python3 set_dw_ip.py
+cd sim && vcs /home/cudia2/Desktop/ECE498HK/Canary/sim/../pkg/types.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/rat.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/multiplication_division_unit.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/rename.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/actual_mult.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/cpu.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/rob.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/address_unit.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/pipelined_i_cache/hit_check_module.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/pipelined_i_cache/allocate_module.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/pipelined_i_cache/pipe_icache.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/pipelined_i_cache/commit.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/pipelined_i_cache/ff_icache.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/d_cache/cache.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/d_cache/ff_array.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/queue.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/reservation_station.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/rrf.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/wallace_multiplier.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/alu.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/fetch.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/execute.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/arbiter.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/free_list.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/carry_look_ahead_adder.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/pc_reg.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/decode.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/physical_reg_file.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/load_store_queue.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/Pipelined_Core/cache_unit.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/Pipelined_Core/if_stage.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/Pipelined_Core/mem_stage.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/Pipelined_Core/d_cache.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/Pipelined_Core/pipeline_regfile.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/Pipelined_Core/fowarding_unit.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/Pipelined_Core/wb_stage.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/Pipelined_Core/ex_stage.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/Pipelined_Core/pipeline_alu.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/Pipelined_Core/id_stage.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/Pipelined_Core/pipeline_pc_reg.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/Pipelined_Core/pipeline_cpu.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/Pipelined_Core/i_cache.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/Pipelined_Core/ff_array.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/memory.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/fpga_mem_controller.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/snoopbus.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/cpu_top.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hvl/rvfimon.v /home/cudia2/Desktop/ECE498HK/Canary/sim/../hvl/mem_itf.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hvl/magic_dual_port.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hvl/random_tb.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hvl/banked_mem_itf.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hvl/fpga_bram_itf.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hvl/fpga_bram.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hvl/monitor.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hvl/top_tb.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hvl/banked_memory.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hvl/ventilator/ventilator_monitor.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hvl/ventilator/verilator_tb.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../hvl/mon_itf.sv /home/cudia2/Desktop/ECE498HK/Canary/sim/../sram/output/mp_cache_data_array/mp_cache_data_array.v /home/cudia2/Desktop/ECE498HK/Canary/sim/../sram/output/btb_array/btb_array.v /home/cudia2/Desktop/ECE498HK/Canary/sim/../sram/output/pipe_cache_tag/pipe_cache_tag.v /home/cudia2/Desktop/ECE498HK/Canary/sim/../sram/output/pipe_cache_data/pipe_cache_data.v /home/cudia2/Desktop/ECE498HK/Canary/sim/../sram/output/mp_cache_tag_array/mp_cache_tag_array.v /software/Synopsys-2021_x86_64/icc/R-2020.09-SP4/dw/sim_ver/DW_div_seq.v -full64 -lca -sverilog -timescale=1ns/1ns -debug_acc+all -kdb -fsdb -suppress=LCA_FEATURES_ENABLED +incdir+/software/Synopsys-2021_x86_64/icc/R-2020.09-SP4/dw/sim_ver +define+DW_SUPPRESS_WARN -msg_config=../vcs_warn.config -l compile.log -top top_tb -o top_tb
+                         Chronologic VCS (TM)
+      Version R-2020.12-SP1-1_Full64 -- Thu Sep 26 13:22:34 2024
+
+                    Copyright (c) 1991 - 2021 Synopsys, Inc.
+   This software and the associated documentation are proprietary to Synopsys,
+ Inc. This software may only be used in accordance with the terms and conditions
+ of a written license agreement with Synopsys, Inc. All other use, reproduction,
+            or distribution of this software is strictly prohibited.
+
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../pkg/types.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/rat.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/multiplication_division_unit.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/rename.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/actual_mult.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/cpu.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/rob.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/address_unit.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/pipelined_i_cache/hit_check_module.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/pipelined_i_cache/allocate_module.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/pipelined_i_cache/pipe_icache.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/pipelined_i_cache/commit.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/pipelined_i_cache/ff_icache.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/d_cache/cache.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/d_cache/ff_array.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/queue.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/reservation_station.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/rrf.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/wallace_multiplier.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/alu.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/fetch.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/execute.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/arbiter.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/free_list.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/carry_look_ahead_adder.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/pc_reg.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/decode.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/physical_reg_file.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/OOO_core/load_store_queue.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/Pipelined_Core/cache_unit.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/Pipelined_Core/if_stage.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/Pipelined_Core/mem_stage.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/Pipelined_Core/d_cache.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/Pipelined_Core/pipeline_regfile.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/Pipelined_Core/fowarding_unit.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/Pipelined_Core/wb_stage.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/Pipelined_Core/ex_stage.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/Pipelined_Core/pipeline_alu.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/Pipelined_Core/id_stage.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/Pipelined_Core/pipeline_pc_reg.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/Pipelined_Core/pipeline_cpu.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/Pipelined_Core/i_cache.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/Pipelined_Core/ff_array.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/memory.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/fpga_mem_controller.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/snoopbus.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/cpu_top.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hvl/rvfimon.v'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hvl/mem_itf.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hvl/magic_dual_port.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hvl/random_tb.sv'
+Parsing included file '../../hvl/randinst.svh'.
+Parsing included file '../../hvl/instr_cg.svh'.
+Back to file '../../hvl/randinst.svh'.
+Back to file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hvl/random_tb.sv'.
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hvl/banked_mem_itf.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hvl/fpga_bram_itf.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hvl/fpga_bram.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hvl/monitor.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hvl/top_tb.sv'
+Parsing included file '../../hvl/rvfi_reference.svh'.
+Back to file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hvl/top_tb.sv'.
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hvl/banked_memory.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hvl/ventilator/ventilator_monitor.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hvl/ventilator/verilator_tb.sv'
+Parsing included file '../../hvl/rvfi_reference.svh'.
+Back to file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hvl/ventilator/verilator_tb.sv'.
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../hvl/mon_itf.sv'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../sram/output/mp_cache_data_array/mp_cache_data_array.v'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../sram/output/btb_array/btb_array.v'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../sram/output/pipe_cache_tag/pipe_cache_tag.v'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../sram/output/pipe_cache_data/pipe_cache_data.v'
+Parsing design file '/home/cudia2/Desktop/ECE498HK/Canary/sim/../sram/output/mp_cache_tag_array/mp_cache_tag_array.v'
+Parsing design file '/software/Synopsys-2021_x86_64/icc/R-2020.09-SP4/dw/sim_ver/DW_div_seq.v'
+Parsing included file '/software/Synopsys-2021_x86_64/icc/R-2020.09-SP4/dw/sim_ver/DW_div_function.inc'.
+Back to file '/software/Synopsys-2021_x86_64/icc/R-2020.09-SP4/dw/sim_ver/DW_div_seq.v'.
+Top Level Modules:
+       top_tb
+TimeScale is 1 ns / 1 ps
+
+Lint-[UI] Unused input
+/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/cpu_top.sv, 10
+  Following is an unused input.
+  Source info: bmem_ready
+
+
+Lint-[UI] Unused input
+/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/cpu_top.sv, 11
+  Following is an unused input.
+  Source info: bmem_raddr
+
+
+Lint-[UI] Unused input
+/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/cpu_top.sv, 12
+  Following is an unused input.
+  Source info: bmem_rdata
+
+
+Lint-[UI] Unused input
+/home/cudia2/Desktop/ECE498HK/Canary/sim/../hdl/cpu_top.sv, 13
+  Following is an unused input.
+  Source info: bmem_rvalid
+
+Notice: Ports coerced to inout, use -notice for details
+Starting vcs inline pass...
+
+79 modules and 0 UDP read.
+recompiling module top_tb
+	However, due to incremental compilation, only 1 module needs to be compiled. 
+make[1]: Entering directory '/home/cudia2/Desktop/ECE498HK/Canary/sim/sim/csrc'
+make[1]: Leaving directory '/home/cudia2/Desktop/ECE498HK/Canary/sim/sim/csrc'
+make: *** [Makefile:20: sim/top_tb] Interrupt
