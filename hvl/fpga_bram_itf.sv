@@ -1,7 +1,7 @@
 interface fpga_bram_itf #(
     parameter   ADDRESS_DATA_WIDTH = 32 // 64-bit data / 32-bit addr
 )(
-    input   bit         clk,
+    input   bit         fpga_clk,
     input   bit         rst
 );
 
@@ -25,7 +25,7 @@ interface fpga_bram_itf #(
     bit                         error = 1'b0;
 
     modport mem (
-        input                   clk,
+        input                   fpga_clk,
         input                   rst,
 
         input                   address_data_bus_c_to_m,

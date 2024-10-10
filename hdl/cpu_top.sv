@@ -2,6 +2,8 @@ module cpu_top(
     input   logic clk,
     input   logic rst,
 
+    input   logic fpga_clk,
+
     output logic   [31:0]      bmem_addr,
     output logic               bmem_read,
     output logic               bmem_write,
@@ -160,6 +162,7 @@ memory memory_unit(
 fpga_mem_controller fpga_mem_controller(
     .clk(clk),
     .rst(rst),
+    .fpga_clk(fpga_clk),
 
     // Caches -> Controller
     .bmem_addr(bmem_addr),

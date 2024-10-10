@@ -5,13 +5,15 @@ module top_tb;
     timeunit 1ns;
     timeprecision 1ps;
 
-    // int fpga_clock_half_period_ps = getenv("ECE411_FPGA_CLOCK_PERIOD_PS").atoi() / 2;
-    // bit fpga_clk;
-    // always #(fpga_clock_half_period_ps) fpga_clk = ~ fpga_clk;
+    int fpga_clock_half_period_ps = getenv("ECE411_FPGA_CLOCK_PERIOD_PS").atoi() / 2;
+    bit fpga_clk;
+    always #(fpga_clock_half_period_ps) fpga_clk = ~ fpga_clk;
     
     int clock_half_period_ps = getenv("ECE411_CLOCK_PERIOD_PS").atoi() / 2;
     bit clk;
     always #(clock_half_period_ps) clk = ~clk;
+
+
 
     bit rst;
 
@@ -98,6 +100,8 @@ module top_tb;
         .clk            (clk),
         .rst            (rst),
 
+        .fpga_clk       (fpga_clk),
+
         // Explicit dual port connections when caches are not integrated into design yet (Before CP3)
         // .imem_addr      (mem_itf_i.addr),
         // .imem_rmask     (mem_itf_i.rmask),
@@ -142,7 +146,7 @@ module top_tb;
         $fsdbDumpfile("dump.fsdb");
         $fsdbDumpvars(0, "+all");
         rst = 1'b1;
-        repeat (2) @(posedge clk);
+        repeat (5) @(posedge clk);
         rst <= 1'b0;
     end
 

@@ -28,7 +28,7 @@ run_top_tb: sim/top_tb $(OOO_PROG) $(PPL_PROG)
 	rm -f sim/dump.fsdb
 	python3 ../synth/get_clock.py
 	python3 get_bmem_x.py
-	export ECE411_FPGA_CLOCK_PERIOD_PS=$(shell python3 ../synth/get_fpga_clock.py) ;\
+	export ECE411_FPGA_CLOCK_PERIOD_PS=$(shell python3 ../synth/get_clock_fpga.py) ;\
 	export ECE411_CLOCK_PERIOD_PS=$(shell python3 ../synth/get_clock.py) ;\
 	export ECE411_BRAM_0_ON_X=$(shell python3 get_bmem_x.py) ;\
 	export ECE411_MEMLST=$(PWD)/sim/memory ;\

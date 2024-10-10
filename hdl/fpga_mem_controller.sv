@@ -2,6 +2,8 @@ module fpga_mem_controller(
     input   logic clk,
     input   logic rst,
 
+    input   logic fpga_clk,
+
     // Caches -> Controller
     input logic   [31:0]      bmem_addr,
     input logic               bmem_read,
@@ -56,56 +58,98 @@ module fpga_mem_controller(
     logic read_addr, read_data;
     logic [31:0] rburst_counter;
     logic latch_bmem_rdata, unlatch_bmem_rdata;
-    
+
+    logic [31:0] buffer_address_data_bus_c_to_m;
+    logic        buffer_address_on_c_to_m;
+    logic        buffer_data_on_c_to_m;
+    logic        buffer_read_en_c_to_m;
+    logic        buffer_write_en_c_to_m;
+
+    logic [35:0] buffered_data_out;
+    logic        fifo_full;
+    logic        fifo_empty;
+
+    logic        w_en;
+    logic        write_to_fifo;
+
+    always_ff @(posedge clk) w_en <= latch_bmem_rdata;
+
+    async_fifo async_fifo(
+        .data_in({buffer_address_data_bus_c_to_m,
+                  buffer_address_on_c_to_m,
+                  buffer_data_on_c_to_m,
+                  buffer_read_en_c_to_m,
+                  buffer_write_en_c_to_m}),
+        .w_en(w_en | write_to_fifo),
+        .w_clk(clk),
+        .w_rst(rst),
+        .full(fifo_full),
+
+        .data_out(buffered_data_out),
+        .r_en(1'b1),
+        .r_clk(fpga_clk),
+        .r_rst(rst), // Temp may need to change
+        .empty(fifo_empty) 
+    );
+
+
+    assign address_data_bus_c_to_m = buffered_data_out[35:4]; 
+    assign address_on_c_to_m = buffered_data_out[3];
+    assign data_on_c_to_m = buffered_data_out[2];
+    assign read_en_c_to_m = buffered_data_out[1];
+    assign write_en_c_to_m = buffered_data_out[0];
+
+
+
     always_ff @(posedge clk) begin
         if(rst) begin
-            address_data_bus_c_to_m <= 'x;
-            address_on_c_to_m <= 1'b0;
-            data_on_c_to_m <= 1'b0;
-            read_en_c_to_m <= 1'b0;
-            write_en_c_to_m <= 1'b0;
+            buffer_address_data_bus_c_to_m <= 'x;
+            buffer_address_on_c_to_m <= 1'b0;
+            buffer_data_on_c_to_m <= 1'b0;
+            buffer_read_en_c_to_m <= 1'b0;
+            buffer_write_en_c_to_m <= 1'b0;
             state <= IDLE;
         end else begin
             if(latch_bmem_rdata) begin
-                address_data_bus_c_to_m <= bmem_addr;
+                buffer_address_data_bus_c_to_m <= bmem_addr;
             end else if(unlatch_bmem_rdata) begin
-                address_data_bus_c_to_m <= 'x;
+                buffer_address_data_bus_c_to_m <= 'x;
                 bmem_raddr <= 'x;
                 bmem_rdata <= 'x;
             end else if(write_addr) begin
                 // address_data_bus_c_to_m <= bmem_addr;
-                address_on_c_to_m <= 1'b1;
-                data_on_c_to_m <= 1'b1;
-                read_en_c_to_m <= 1'b0;
-                write_en_c_to_m <= 1'b1;
+                buffer_address_on_c_to_m <= 1'b1;
+                buffer_data_on_c_to_m <= 1'b1;
+                buffer_read_en_c_to_m <= 1'b0;
+                buffer_write_en_c_to_m <= 1'b1;
             end else if(write_data) begin
-                address_data_bus_c_to_m <= bmem_wdata[32*wburst_counter +: 32];
-                data_on_c_to_m <= 1'b1;
-                address_on_c_to_m <= 1'b0;
-                read_en_c_to_m <= 1'b0;
-                write_en_c_to_m <= 1'b1;
+                buffer_address_data_bus_c_to_m <= bmem_wdata[32*wburst_counter +: 32];
+                buffer_data_on_c_to_m <= 1'b1;
+                buffer_address_on_c_to_m <= 1'b0;
+                buffer_read_en_c_to_m <= 1'b0;
+                buffer_write_en_c_to_m <= 1'b1;
             end else if(read_addr) begin
                 // address_data_bus_c_to_m <= bmem_addr;
                 bmem_raddr <= address_data_bus_c_to_m;
-                address_on_c_to_m <= 1'b1;
-                data_on_c_to_m <= 1'b0;
-                read_en_c_to_m <= 1'b1;
-                write_en_c_to_m <= 1'b0;
+                buffer_address_on_c_to_m <= 1'b1;
+                buffer_data_on_c_to_m <= 1'b0;
+                buffer_read_en_c_to_m <= 1'b1;
+                buffer_write_en_c_to_m <= 1'b0;
             end else if(read_data) begin
                 if(resp_m_to_c) begin
                     bmem_rdata[32*rburst_counter +: 32] <= address_data_bus_m_to_c;
                 end
-                address_on_c_to_m <= 1'b0;
-                data_on_c_to_m <= 1'b1;
-                read_en_c_to_m <= 1'b1;
-                write_en_c_to_m <= 1'b0;
+                buffer_address_on_c_to_m <= 1'b0;
+                buffer_data_on_c_to_m <= 1'b1;
+                buffer_read_en_c_to_m <= 1'b1;
+                buffer_write_en_c_to_m <= 1'b0;
             end else begin
                 bmem_rdata <= 'x;
-                address_data_bus_c_to_m <= 'x;
-                address_on_c_to_m <= 1'b0;
-                data_on_c_to_m <= 1'b0;
-                read_en_c_to_m <= 1'b0;
-                write_en_c_to_m <= 1'b0;
+                buffer_address_data_bus_c_to_m <= 'x;
+                buffer_address_on_c_to_m <= 1'b0;
+                buffer_data_on_c_to_m <= 1'b0;
+                buffer_read_en_c_to_m <= 1'b0;
+                buffer_write_en_c_to_m <= 1'b0;
             end
 
         state <= state_next;
@@ -124,6 +168,7 @@ module fpga_mem_controller(
         bmem_rvalid = 1'b0;
         latch_bmem_rdata = 1'b0;
         unlatch_bmem_rdata = 1'b0;
+        write_to_fifo = 1'b0;
         case(state)
         IDLE: begin
             bmem_ready = 1'b1;
@@ -237,91 +282,100 @@ module fpga_mem_controller(
 
         READ_ADDR: begin
             read_addr = 1'b1;
-            if(resp_m_to_c) begin
-                state_next = READ_DATA_1;
-            end else begin
-                state_next = state_next; 
-            end
+            write_to_fifo = 1'b1;
+            state_next = READ_DATA_1;
+            // if(resp_m_to_c) begin
+            // end else begin
+            //     state_next = state_next; 
+            // end
         end
         READ_DATA_1: begin
             read_data = 1'b1;
-            if(resp_m_to_c) begin
-                // bmem_rvalid = 1'b1;
-                state_next = READ_DATA_2;
-            end else begin
-                state_next = state_next;
-            end
+            write_to_fifo = 1'b1;
+            state_next = READ_DATA_2;
+            // if(resp_m_to_c) begin
+            //     // bmem_rvalid = 1'b1;
+            // end else begin
+            //     state_next = state_next;
+            // end
         end
         READ_DATA_2: begin
             read_data = 1'b1;
+            write_to_fifo = 1'b1;
             rburst_counter = 32'd1;
-            if(resp_m_to_c) begin
-                // bmem_rvalid = 1'b1;
-                state_next = READ_DATA_3;
-            end else begin
-                state_next = state_next;
-            end
+            state_next = READ_DATA_3;
+            // if(resp_m_to_c) begin
+            //     // bmem_rvalid = 1'b1;
+            // end else begin
+            //     state_next = state_next;
+            // end
         end
         READ_DATA_3: begin
             read_data = 1'b1;
             rburst_counter = 32'd0;
-            if(resp_m_to_c) begin
-                bmem_rvalid = 1'b1;
-                state_next = READ_DATA_4;
-            end else begin
-                state_next = state_next;
-            end
+            state_next = READ_DATA_4;
+            write_to_fifo = 1'b1;
+            // if(resp_m_to_c) begin
+            //     bmem_rvalid = 1'b1;
+            // end else begin
+            //     state_next = state_next;
+            // end
         end
         READ_DATA_4: begin
             read_data = 1'b1;
             rburst_counter = 32'd1;
-            if(resp_m_to_c) begin
-                // bmem_rvalid = 1'b1;
-                state_next = READ_DATA_5;
-            end else begin
-                state_next = state_next;
-            end
+            write_to_fifo = 1'b1;
+            state_next = READ_DATA_5;
+            // if(resp_m_to_c) begin
+            //     // bmem_rvalid = 1'b1;
+            // end else begin
+            //     state_next = state_next;
+            // end
         end
         READ_DATA_5: begin
             read_data = 1'b1;
             rburst_counter = 32'd0;
-            if(resp_m_to_c) begin
-                bmem_rvalid = 1'b1;
-                state_next = READ_DATA_6;
-            end else begin
-                state_next = state_next;
-            end
+            write_to_fifo = 1'b1;
+            state_next = READ_DATA_6;
+            // if(resp_m_to_c) begin
+            //     bmem_rvalid = 1'b1;
+            // end else begin
+            //     state_next = state_next;
+            // end
         end
         READ_DATA_6: begin
             read_data = 1'b1;
             rburst_counter = 32'd1;
-            if(resp_m_to_c) begin
-                // bmem_rvalid = 1'b1;
-                state_next = READ_DATA_7;
-            end else begin
-                state_next = state_next;
-            end
+            write_to_fifo = 1'b1;
+            state_next = READ_DATA_7;
+            // if(resp_m_to_c) begin
+            //     // bmem_rvalid = 1'b1;
+            // end else begin
+            //     state_next = state_next;
+            // end
         end
 
         READ_DATA_7: begin
             read_data = 1'b1;
             rburst_counter = 32'd0;
-            if(resp_m_to_c) begin
-                bmem_rvalid = 1'b1;
-                state_next = READ_DATA_8;
-            end else begin
-                state_next = state_next;
-            end
+            write_to_fifo = 1'b1;
+            state_next = READ_DATA_8;
+            // if(resp_m_to_c) begin
+            //     bmem_rvalid = 1'b1;
+            // end else begin
+            //     state_next = state_next;
+            // end
         end
         READ_DATA_8: begin
             read_data = 1'b1;
             rburst_counter = 32'd1;
-            if(resp_m_to_c) begin
-                // bmem_rvalid = 1'b1;
-                state_next = READ_DONE;
-            end else begin
-                state_next = state_next;
-            end
+            write_to_fifo = 1'b1;
+            state_next = READ_DONE;
+            // if(resp_m_to_c) begin
+            //     // bmem_rvalid = 1'b1;
+            // end else begin
+            //     state_next = state_next;
+            // end
         end
 
         READ_DONE: begin

@@ -29,7 +29,7 @@ module fpga_bram #(
         $display("using memory file %s", memfile1);
     endtask
 
-    always @(posedge itf.clk iff itf.rst) begin
+    always @(posedge itf.fpga_clk iff itf.rst) begin
         reset();
     end
 
@@ -58,7 +58,7 @@ module fpga_bram #(
 
     state_t state, next_state;
 
-    always_ff @(posedge itf.clk) begin
+    always_ff @(posedge itf.fpga_clk) begin
         if(itf.rst) begin
             state <= idle;
         end else begin
@@ -274,7 +274,7 @@ module fpga_bram #(
         endcase
     end
 
-    always_ff @(posedge itf.clk) begin
+    always_ff @(posedge itf.fpga_clk) begin
         if(store_address) begin
             addra <= itf.address_data_bus_c_to_m;
         end else if(clear_address) begin
@@ -290,14 +290,14 @@ module fpga_bram #(
         end
     end
 
-    always_ff @(posedge itf.clk) begin
+    always_ff @(posedge itf.fpga_clk) begin
         if(enable_memory) begin
             if(itf.write_en_c_to_m) begin
                 internal_memory_array[(addra + (32'd8 *wburst_counter)) / 32'd8] <= dina;
                 if($isunknown(dina)) $display("Data is invalid.");
-                $display("Write - Address: 0x%x, Data: 0x%x", (addra + (32'd8 *wburst_counter)), dina);
+                // $display("Write - Address: 0x%x, Data: 0x%x", (addra + (32'd8 *wburst_counter)), dina);
             end else if(itf.read_en_c_to_m)begin
-                $display("Read - Address: 0x%x, Data: 0x%x", (addra + (32'd8 *rburst_counter)) + 4*sub_rburst_counter, internal_memory_array[(addra + (32'd8 *rburst_counter)) / 32'd8][32*sub_rburst_counter +: 32]);
+                // $display("Read - Address: 0x%x, Data: 0x%x", (addra + (32'd8 *rburst_counter)) + 4*sub_rburst_counter, internal_memory_array[(addra + (32'd8 *rburst_counter)) / 32'd8][32*sub_rburst_counter +: 32]);
                 itf.address_data_bus_m_to_c <= internal_memory_array[(addra + (32'd8 *rburst_counter)) / 32'd8][32*sub_rburst_counter +: 32];
             end else begin
                 itf.address_data_bus_m_to_c <= 'x;
@@ -307,7 +307,7 @@ module fpga_bram #(
         end
     end
 
-    // always @(posedge itf.clk iff !itf.rst) begin
+    // always @(posedge itf.fpga_clk iff !itf.rst) begin
     //     if(enable_memory) begin
     //         if($isunknown(addra)) begin
     //             $error("Address contains 'x");
