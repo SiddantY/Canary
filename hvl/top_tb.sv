@@ -5,9 +5,9 @@ module top_tb;
     timeunit 1ns;
     timeprecision 1ps;
 
-    // int fpga_clock_half_period_ps = getenv("ECE411_FPGA_CLOCK_PERIOD_PS").atoi() / 2;
-    // bit fpga_clk;
-    // always #(fpga_clock_half_period_ps) fpga_clk = ~ fpga_clk;
+    int fpga_clock_half_period_ps = getenv("ECE411_FPGA_CLOCK_PERIOD_PS").atoi() / 2;
+    bit fpga_clk;
+    always #(fpga_clock_half_period_ps) fpga_clk = ~ fpga_clk;
     
     int clock_half_period_ps = getenv("ECE411_CLOCK_PERIOD_PS").atoi() / 2;
     bit clk;
@@ -96,6 +96,7 @@ module top_tb;
 
     cpu_top dut(
         .clk            (clk),
+        .fpga_clk       (fpga_clk),
         .rst            (rst),
 
         // Explicit dual port connections when caches are not integrated into design yet (Before CP3)
@@ -124,14 +125,15 @@ module top_tb;
         // Memory -> Controller
         .address_data_bus_m_to_c(fpga_bram_itf.address_data_bus_m_to_c),
         .resp_m_to_c(fpga_bram_itf.resp_m_to_c),
+        .r_en(fpga_bram_itf.r_en),
 
         // Controller -> Memory
         .address_data_bus_c_to_m(fpga_bram_itf.address_data_bus_c_to_m),
         .address_on_c_to_m(fpga_bram_itf.address_on_c_to_m),
         .data_on_c_to_m(fpga_bram_itf.data_on_c_to_m),
         .read_en_c_to_m(fpga_bram_itf.read_en_c_to_m),
-        .write_en_c_to_m(fpga_bram_itf.write_en_c_to_m)
-
+        .write_en_c_to_m(fpga_bram_itf.write_en_c_to_m),
+        .fifo_empty(fpga_bram_itf.fifo_empty)
     );
 
     `include "../../hvl/rvfi_reference.svh"
@@ -142,7 +144,7 @@ module top_tb;
         $fsdbDumpfile("dump.fsdb");
         $fsdbDumpvars(0, "+all");
         rst = 1'b1;
-        repeat (2) @(posedge clk);
+        repeat (5) @(posedge clk);
         rst <= 1'b0;
     end
 

@@ -1,5 +1,6 @@
 module cpu_top(
     input   logic clk,
+    input   logic fpga_clk,
     input   logic rst,
 
     output logic   [31:0]      bmem_addr,
@@ -15,13 +16,15 @@ module cpu_top(
     // Memory -> Controller
     input logic [31:0] address_data_bus_m_to_c,
     input logic resp_m_to_c,
+    input logic r_en,
 
     // Controller -> Memory
     output logic [31:0] address_data_bus_c_to_m,
     output logic address_on_c_to_m,
     output logic data_on_c_to_m,
     output logic read_en_c_to_m,
-    output logic write_en_c_to_m
+    output logic write_en_c_to_m,
+    output logic fifo_empty
 );
 
 logic   [31:0]  ooo_imem_addr;
@@ -159,6 +162,7 @@ memory memory_unit(
 
 fpga_mem_controller fpga_mem_controller(
     .clk(clk),
+    .fpga_clk(fpga_clk),
     .rst(rst),
 
     // Caches -> Controller
@@ -177,13 +181,15 @@ fpga_mem_controller fpga_mem_controller(
     // Memory -> Controller
     .address_data_bus_m_to_c(address_data_bus_m_to_c),
     .resp_m_to_c(resp_m_to_c),
+    .r_en(r_en),
 
     // Controller -> Memory
     .address_data_bus_c_to_m(address_data_bus_c_to_m),
     .address_on_c_to_m(address_on_c_to_m),
     .data_on_c_to_m(data_on_c_to_m),
     .read_en_c_to_m(read_en_c_to_m),
-    .write_en_c_to_m(write_en_c_to_m)
+    .write_en_c_to_m(write_en_c_to_m),
+    .fifo_empty(fifo_empty)
 );
 
 endmodule
