@@ -113,6 +113,7 @@ module fpga_mem_controller(
 
     // Control Signals
     logic [3:0] read_counter; // 0 -> 7 + 1 overflow bit
+    logic inc_read_counter;
     logic store_bmem_address;
     logic [31:0] latched_bmem_addr;
     logic rburst_counter;
@@ -124,8 +125,8 @@ module fpga_mem_controller(
             latched_bmem_addr <= 'x;
             bmem_rdata <= 'x;
         end else begin
-            if(r_en_FPGA_to_CPU_FIFO) read_counter <= read_counter + 4'd1;
-            if(read_counter == 4'd8) read_counter <= '0;
+            if(inc_read_counter) read_counter <= read_counter + 4'd1;
+            if(read_counter == 4'd10) read_counter <= '0;
 
             if(store_bmem_address) latched_bmem_addr <= bmem_addr;
 
@@ -144,7 +145,10 @@ module fpga_mem_controller(
         bmem_ready = 1'b0;
         bmem_rvalid = 1'b0;
         store_fpga_mem = 1'b0;
+        store_bmem_address = 1'b0;
         rburst_counter = 'x;
+        bmem_raddr = 'x;
+        inc_read_counter = 1'b0;
         next_state = state;
         unique case(state)
             CPU_IDLE: begin // Wait for a read or write operation from the CPU
@@ -169,26 +173,29 @@ module fpga_mem_controller(
                 next_state = CPU_READ_DATA;
             end
             CPU_READ_DATA: begin // Wait for the FPGA to deliver the data over the FPGA_to_CPU_FIFO
-                if(read_counter <= 4'd7) begin
+                bmem_raddr = latched_bmem_addr;
+                if(read_counter <= 4'd9) begin
                     next_state = CPU_READ_DATA;
                     if(!empty_FPGA_to_CPU_FIFO) begin
                         // Read the data that the FPGA writes back to the CPU
-                        r_en_FPGA_to_CPU_FIFO = 1'b1;
+                        // r_en_FPGA_to_CPU_FIFO = 1'b1;
                         case(read_counter)
-                            4'd0: begin rburst_counter = 1'b0; bmem_rvalid = 1'b0; end
-                            4'd1: begin rburst_counter = 1'b0; bmem_rvalid = 1'b0; store_fpga_mem = 1'b1; end
-                            4'd2: begin rburst_counter = 1'b1; bmem_rvalid = 1'b0; store_fpga_mem = 1'b1; end
-                            4'd3: begin rburst_counter = 1'b0; bmem_rvalid = 1'b1; store_fpga_mem = 1'b1; end
-                            4'd4: begin rburst_counter = 1'b1; bmem_rvalid = 1'b0; store_fpga_mem = 1'b1; end
-                            4'd5: begin rburst_counter = 1'b0; bmem_rvalid = 1'b1; store_fpga_mem = 1'b1; end
-                            4'd6: begin rburst_counter = 1'b1; bmem_rvalid = 1'b0; store_fpga_mem = 1'b1; end
-                            4'd7: begin rburst_counter = 1'b0; bmem_rvalid = 1'b1; store_fpga_mem = 1'b1; end
+                            4'd0: begin inc_read_counter = 1'b1; r_en_FPGA_to_CPU_FIFO = 1'b1; rburst_counter = 1'bx; bmem_rvalid = 1'b0; store_fpga_mem = 1'b0; end   // Read first 32 bits
+                            4'd1: begin inc_read_counter = 1'b1; r_en_FPGA_to_CPU_FIFO = 1'b1; rburst_counter = 1'b0; bmem_rvalid = 1'b0; store_fpga_mem = 1'b1; end   // Read second 32 bits, store first 32 bits
+                            4'd2: begin inc_read_counter = 1'b1; r_en_FPGA_to_CPU_FIFO = 1'b1; rburst_counter = 1'b1; bmem_rvalid = 1'b0; store_fpga_mem = 1'b1; end   // Read third 32 bits, store second 32 bits
+                            4'd3: begin inc_read_counter = 1'b1; r_en_FPGA_to_CPU_FIFO = 1'b1; rburst_counter = 1'b0; bmem_rvalid = 1'b1; store_fpga_mem = 1'b1; end   // Read fourth 32 bits, store third 32 bits, validate first 64 bits
+                            4'd4: begin inc_read_counter = 1'b1; r_en_FPGA_to_CPU_FIFO = 1'b1; rburst_counter = 1'b1; bmem_rvalid = 1'b0; store_fpga_mem = 1'b1; end   // Read fifth 32 bits, store fourth 32 bits
+                            4'd5: begin inc_read_counter = 1'b1; r_en_FPGA_to_CPU_FIFO = 1'b1; rburst_counter = 1'b0; bmem_rvalid = 1'b1; store_fpga_mem = 1'b1; end   // Read sixth 32 bits, store fifth 32 bits, validate second 64 bits
+                            4'd6: begin inc_read_counter = 1'b1; r_en_FPGA_to_CPU_FIFO = 1'b1; rburst_counter = 1'b1; bmem_rvalid = 1'b0; store_fpga_mem = 1'b1; end   // Read seventh 32 bits, store sixth 32 btis
+                            4'd7: begin inc_read_counter = 1'b1; r_en_FPGA_to_CPU_FIFO = 1'b1; rburst_counter = 1'b0; bmem_rvalid = 1'b1; store_fpga_mem = 1'b1; end   // Read eighth 32 bits, store seventh 32 bits, validate third 64 bits
+                        endcase
+                    end else begin
+                        case(read_counter)
+                            4'd8: begin inc_read_counter = 1'b1; r_en_FPGA_to_CPU_FIFO = 1'b0; rburst_counter = 1'b1; bmem_rvalid = 1'b0; store_fpga_mem = 1'b1; end   // Store eighth 32 bits 
+                            4'd9: begin inc_read_counter = 1'b1; r_en_FPGA_to_CPU_FIFO = 1'b0; rburst_counter = 1'bx; bmem_rvalid = 1'b1; store_fpga_mem = 1'b0; end   // Validate eighth 32 bits
                         endcase
                     end
                 end else begin
-                    rburst_counter = 1'b1;
-                    bmem_rvalid = 1'b0;
-                    store_fpga_mem = 1'b1;
                     next_state = CPU_IDLE;
                 end
             end
@@ -204,7 +211,10 @@ module fpga_mem_controller(
                 bmem_ready = 1'b0;
                 bmem_rvalid = 1'b0;
                 store_fpga_mem = 1'b0;
+                store_bmem_address = 1'b0;
                 rburst_counter = 'x;
+                bmem_raddr = 'x;
+                inc_read_counter = 1'b0;
                 next_state = state;
             end
         endcase
