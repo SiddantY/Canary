@@ -125,7 +125,9 @@ module top_tb;
         // Memory -> Controller
         .address_data_bus_m_to_c(fpga_bram_itf.address_data_bus_m_to_c),
         .resp_m_to_c(fpga_bram_itf.resp_m_to_c),
-        .r_en(fpga_bram_itf.r_en),
+        .r_en_CPU_to_FPGA_FIFO(fpga_bram_itf.r_en_CPU_to_FPGA_FIFO),
+        .w_en_FPGA_to_CPU_FIFO(fpga_bram_itf.w_en_FPGA_to_CPU_FIFO),
+        .data_in_FPGA_to_CPU_FIFO(fpga_bram_itf.data_in_FPGA_to_CPU_FIFO),
 
         // Controller -> Memory
         .address_data_bus_c_to_m(fpga_bram_itf.address_data_bus_c_to_m),
@@ -133,7 +135,8 @@ module top_tb;
         .data_on_c_to_m(fpga_bram_itf.data_on_c_to_m),
         .read_en_c_to_m(fpga_bram_itf.read_en_c_to_m),
         .write_en_c_to_m(fpga_bram_itf.write_en_c_to_m),
-        .fifo_empty(fpga_bram_itf.fifo_empty)
+        .empty_CPU_to_FPGA_FIFO(fpga_bram_itf.empty_CPU_to_FPGA_FIFO),
+        .full_FPGA_to_CPU_FIFO(fpga_bram_itf.full_FPGA_to_CPU_FIFO)
     );
 
     `include "../../hvl/rvfi_reference.svh"

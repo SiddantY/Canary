@@ -33,71 +33,200 @@ module fpga_bram #(
         reset();
     end
 
-
     enum logic [4:0] {
         FPGA_IDLE,
-        FPGA_READ_ADDR, // Read in the address to read from or write to
+        FPGA_READ_ADDR,
         // Read Operation
-        FPGA_DEASSERT,
-        FPGA_WRITE_READ_DATA_1, // Write first 32 bits of data to CPU from memory
-        FPGA_WRITE_READ_DATA_2, // Write second 32 bits of data to CPU from memory
-        FPGA_WRITE_READ_DATA_3, // Write third 32 bits of data to CPU from memory
-        FPGA_WRITE_READ_DATA_4, // Write fourth 32 bits of data to CPU from memory
-        FPGA_WRITE_READ_DATA_5, // Write fifth 32 bits of data to CPU from memory
-        FPGA_WRITE_READ_DATA_6, // Write sixth 32 bits of data to CPU from memory
-        FPGA_WRITE_READ_DATA_7, // Write seventh 32 bits of data to CPU from memory
-        FPGA_WRITE_READ_DATA_8, // Write eigth 32 bits of data to CPU from memory
-        FPGA_READ_DONE // Finish the read sequence and return to IDLE
+        FPGA_SEND_MEM,
+        // Write Operation
+        FPGA_WRITE_MEM
     } state, next_state;
-
 
     always_ff @(posedge itf.fpga_clk) begin : update_state
         if(itf.rst) begin
             state <= FPGA_IDLE;
         end else begin
             state <= next_state;
-        end 
+        end
+    end
+
+    logic store_address;
+    logic clear_address;
+
+    logic [3:0] read_counter;
+    logic read_from_mem;
+    logic write_to_mem;
+
+    always_ff @(posedge itf.fpga_clk) begin
+        if(itf.rst) begin
+            read_counter <= '0;
+        end else begin
+            if(read_counter == 4'd8) begin
+                read_counter <= '0;
+            end else begin
+                if(read_from_mem) read_counter <= read_counter + 4'd1;
+            end
+        end
     end
 
 
+    always_ff @(posedge itf.fpga_clk) begin
+        if(itf.rst) begin
+            addra <= 'x;
+        end else begin
+            if(store_address) addra <= itf.address_data_bus_c_to_m;
+            if(clear_address) addra <= 'x;
+        end
+    end
+
     always_comb begin : next_state_logic
-        itf.r_en = 1'b0;
-        itf.resp_m_to_c = 1'b0;
+        itf.r_en_CPU_to_FPGA_FIFO = 1'b0;
+        itf.w_en_FPGA_to_CPU_FIFO = 1'b0;
+        store_address = 1'b0;
+        read_from_mem = 1'b0;
+        write_to_mem = 1'b0;
+        rburst_counter = 'x;
+        sub_rburst_counter = 'x;
         next_state = state;
         unique case(state)
             FPGA_IDLE: begin
-                if(!itf.fifo_empty) begin // If there is some data in the FIFO then we know the CPU is trying to do something
-                    itf.r_en = 1'b1; // Not used by the CPU
+                if(!itf.empty_CPU_to_FPGA_FIFO) begin
+                    itf.r_en_CPU_to_FPGA_FIFO = 1'b1;
                     next_state = FPGA_READ_ADDR;
-                    // if(itf.read_en_c_to_m) begin
-                    //     state_next = FPGA_READ_READ_ADDR;
-                    // end else begin
-                    //     state_next = FPGA_IDLE;
-                    // end
                 end else begin
                     next_state = FPGA_IDLE;
                 end
             end
-            FPGA_READ_ADDR: begin // Read in the address that the CPU supplies
-                // At this point the data should be on the bus and we can read the address
-                // store_read_address = 1'b1;
-                itf.resp_m_to_c = 1'b1; // This response is 8 cycles on the CPU 
+            FPGA_READ_ADDR: begin
+                store_address = 1'b1;
                 if(itf.read_en_c_to_m) begin
-                    next_state = FPGA_WRITE_READ_DATA_1;
+                    next_state = FPGA_SEND_MEM;
+                end else if(itf.write_en_c_to_m) begin
+                    next_state = FPGA_WRITE_MEM;
                 end else begin
                     next_state = FPGA_READ_ADDR;
                 end
             end
-            FPGA_WRITE_READ_DATA_1: begin // Write the first 32 bits of data
-                
+            FPGA_SEND_MEM: begin
+                if(read_counter <= 4'd7) begin
+                    next_state = FPGA_SEND_MEM;
+                    if(!itf.full_FPGA_to_CPU_FIFO) begin
+                        read_from_mem = 1'b1;
+                        
+                        case(read_counter)
+                            4'd0: begin rburst_counter = 32'd0; sub_rburst_counter = 1'b0; end
+                            4'd1: begin rburst_counter = 32'd0; sub_rburst_counter = 1'b1; itf.w_en_FPGA_to_CPU_FIFO = 1'b1; end
+                            4'd2: begin rburst_counter = 32'd1; sub_rburst_counter = 1'b0; itf.w_en_FPGA_to_CPU_FIFO = 1'b1; end
+                            4'd3: begin rburst_counter = 32'd1; sub_rburst_counter = 1'b1; itf.w_en_FPGA_to_CPU_FIFO = 1'b1; end
+                            4'd4: begin rburst_counter = 32'd2; sub_rburst_counter = 1'b0; itf.w_en_FPGA_to_CPU_FIFO = 1'b1; end
+                            4'd5: begin rburst_counter = 32'd2; sub_rburst_counter = 1'b1; itf.w_en_FPGA_to_CPU_FIFO = 1'b1; end
+                            4'd6: begin rburst_counter = 32'd3; sub_rburst_counter = 1'b0; itf.w_en_FPGA_to_CPU_FIFO = 1'b1; end
+                            4'd7: begin rburst_counter = 32'd3; sub_rburst_counter = 1'b1; itf.w_en_FPGA_to_CPU_FIFO = 1'b1; end
+                        endcase
+                    end
+                end else begin
+                    itf.w_en_FPGA_to_CPU_FIFO = 1'b1;
+                    next_state = FPGA_IDLE;
+                end
+            end
+            FPGA_WRITE_MEM: begin
+
             end
             default: begin
-                itf.r_en = 1'b0;
-                itf.resp_m_to_c = 1'b0;
+                itf.r_en_CPU_to_FPGA_FIFO = 1'b0;
+                itf.w_en_FPGA_to_CPU_FIFO = 1'b0;
+                store_address = 1'b0;
+                read_from_mem = 1'b0;
+                write_to_mem = 1'b0;
                 next_state = state;
             end
         endcase
     end
+
+
+    always_ff @(posedge itf.fpga_clk) begin : memory_interface
+        if(read_from_mem) begin
+            $display("Read - Address: 0x%x, Data: 0x%x", (addra + (32'd8 *rburst_counter)) + 4*sub_rburst_counter, internal_memory_array[(addra + (32'd8 *rburst_counter)) / 32'd8][32*sub_rburst_counter +: 32]);
+            itf.data_in_FPGA_to_CPU_FIFO <= internal_memory_array[(addra + (32'd8 *rburst_counter)) / 32'd8][32*sub_rburst_counter +: 32];
+        end else if(write_to_mem) begin
+            internal_memory_array[(addra + (32'd8 *wburst_counter)) / 32'd8] <= dina;
+            if($isunknown(dina)) $display("Data is invalid.");
+            $display("Write - Address: 0x%x, Data: 0x%x", (addra + (32'd8 *wburst_counter)), dina);
+        end else begin
+            itf.data_in_FPGA_to_CPU_FIFO <= 'x;
+        end
+    end
+
+
+
+
+
+
+
+    // enum logic [4:0] {
+    //     FPGA_IDLE,
+    //     FPGA_READ_ADDR, // Read in the address to read from or write to
+    //     // Read Operation
+    //     FPGA_DEASSERT,
+    //     FPGA_WRITE_READ_DATA_1, // Write first 32 bits of data to CPU from memory
+    //     FPGA_WRITE_READ_DATA_2, // Write second 32 bits of data to CPU from memory
+    //     FPGA_WRITE_READ_DATA_3, // Write third 32 bits of data to CPU from memory
+    //     FPGA_WRITE_READ_DATA_4, // Write fourth 32 bits of data to CPU from memory
+    //     FPGA_WRITE_READ_DATA_5, // Write fifth 32 bits of data to CPU from memory
+    //     FPGA_WRITE_READ_DATA_6, // Write sixth 32 bits of data to CPU from memory
+    //     FPGA_WRITE_READ_DATA_7, // Write seventh 32 bits of data to CPU from memory
+    //     FPGA_WRITE_READ_DATA_8, // Write eigth 32 bits of data to CPU from memory
+    //     FPGA_READ_DONE // Finish the read sequence and return to IDLE
+    // } state, next_state;
+
+
+    // always_ff @(posedge itf.fpga_clk) begin : update_state
+    //     if(itf.rst) begin
+    //         state <= FPGA_IDLE;
+    //     end else begin
+    //         state <= next_state;
+    //     end 
+    // end
+
+
+    // always_comb begin : next_state_logic
+    //     itf.r_en = 1'b0;
+    //     itf.resp_m_to_c = 1'b0;
+    //     next_state = state;
+    //     unique case(state)
+    //         FPGA_IDLE: begin
+    //             if(!itf.fifo_empty) begin // If there is some data in the FIFO then we know the CPU is trying to do something
+    //                 itf.r_en = 1'b1; // Not used by the CPU
+    //                 next_state = FPGA_READ_ADDR;
+    //                 // if(itf.read_en_c_to_m) begin
+    //                 //     state_next = FPGA_READ_READ_ADDR;
+    //                 // end else begin
+    //                 //     state_next = FPGA_IDLE;
+    //                 // end
+    //             end else begin
+    //                 next_state = FPGA_IDLE;
+    //             end
+    //         end
+    //         FPGA_READ_ADDR: begin // Read in the address that the CPU supplies
+    //             // At this point the data should be on the bus and we can read the address
+    //             // store_read_address = 1'b1;
+    //             itf.resp_m_to_c = 1'b1; // This response is 8 cycles on the CPU 
+    //             if(itf.read_en_c_to_m) begin
+    //                 next_state = FPGA_WRITE_READ_DATA_1;
+    //             end else begin
+    //                 next_state = FPGA_READ_ADDR;
+    //             end
+    //         end
+    //         FPGA_WRITE_READ_DATA_1: begin // Write the first 32 bits of data
+                
+    //         end
+    //         default: begin
+    //             itf.r_en = 1'b0;
+    //             itf.resp_m_to_c = 1'b0;
+    //             next_state = state;
+    //         end
+    //     endcase
+    // end
 
 
 
@@ -360,22 +489,22 @@ module fpga_bram #(
     //     end
     // end
 
-    always_ff @(posedge itf.fpga_clk) begin : memory_interface
-        if(enable_memory) begin
-            if(itf.write_en_c_to_m) begin
-                internal_memory_array[(addra + (32'd8 *wburst_counter)) / 32'd8] <= dina;
-                if($isunknown(dina)) $display("Data is invalid.");
-                $display("Write - Address: 0x%x, Data: 0x%x", (addra + (32'd8 *wburst_counter)), dina);
-            end else if(itf.read_en_c_to_m)begin
-                $display("Read - Address: 0x%x, Data: 0x%x", (addra + (32'd8 *rburst_counter)) + 4*sub_rburst_counter, internal_memory_array[(addra + (32'd8 *rburst_counter)) / 32'd8][32*sub_rburst_counter +: 32]);
-                itf.address_data_bus_m_to_c <= internal_memory_array[(addra + (32'd8 *rburst_counter)) / 32'd8][32*sub_rburst_counter +: 32];
-            end else begin
-                itf.address_data_bus_m_to_c <= 'x;
-            end
-        end else begin
-            itf.address_data_bus_m_to_c <= 'x;
-        end
-    end
+    // always_ff @(posedge itf.fpga_clk) begin : memory_interface
+    //     if(enable_memory) begin
+    //         if(itf.write_en_c_to_m) begin
+    //             internal_memory_array[(addra + (32'd8 *wburst_counter)) / 32'd8] <= dina;
+    //             if($isunknown(dina)) $display("Data is invalid.");
+    //             $display("Write - Address: 0x%x, Data: 0x%x", (addra + (32'd8 *wburst_counter)), dina);
+    //         end else if(itf.read_en_c_to_m)begin
+    //             $display("Read - Address: 0x%x, Data: 0x%x", (addra + (32'd8 *rburst_counter)) + 4*sub_rburst_counter, internal_memory_array[(addra + (32'd8 *rburst_counter)) / 32'd8][32*sub_rburst_counter +: 32]);
+    //             itf.address_data_bus_m_to_c <= internal_memory_array[(addra + (32'd8 *rburst_counter)) / 32'd8][32*sub_rburst_counter +: 32];
+    //         end else begin
+    //             itf.address_data_bus_m_to_c <= 'x;
+    //         end
+    //     end else begin
+    //         itf.address_data_bus_m_to_c <= 'x;
+    //     end
+    // end
 
 
 endmodule
