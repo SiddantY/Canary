@@ -7,15 +7,18 @@ import rv32i_types::*;
     input   logic           update_mapping,
     output  logic   [$clog2(NUM_REGS)-1:0]   liberated_phys_reg,
     output  logic           reg_freed,
-    output  logic   [$clog2(NUM_REGS)-1:0]   rrf_arch_to_physical[32]
+    output  logic   [$clog2(NUM_REGS)-1:0]   rrf_arch_to_physical[32],
+
+    input   logic           hardware_scheduler_swap_pc
 );
 
 //logic [6:0] rrf_arch_to_physical[32]; // ISA regs to Physical Reg mappings, 9th bit for valid, rest 8 bits cuz 128 phys regs for now. 32 for 32 arch regs
 // logic[4:0] i;
+
 int i;
 always_ff @(posedge clk)
     begin
-        if (rst) // if reset just make x0 -> pr0, x1 -> pr1, ..., xn -> prn
+        if (rst | hardware_scheduler_swap_pc) // if reset just make x0 -> pr0, x1 -> pr1, ..., xn -> prn
             begin
                 // for (i = 5'd0; i <= 5'd31; i = i + 1'b1) 
                 // for(i = 0; i < 32; i++)

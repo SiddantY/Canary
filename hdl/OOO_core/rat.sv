@@ -22,7 +22,9 @@ import rv32i_types::*;
     output  logic   [$clog2(NUM_REGS)-1:0]   physical_rs1,
     output  logic   [$clog2(NUM_REGS)-1:0]   physical_rs2,
     //output  logic  [2:0]   valid_vec[32],
-    output  logic [NUM_REGS-1:0] phys_valid_vector
+    output  logic [NUM_REGS-1:0] phys_valid_vector,
+
+    input   logic hardware_scheduler_swap_pc
 );
 
 logic [$clog2(NUM_REGS)-1:0] arch_to_physical[32]; // ISA regs to Physical Reg mappings, 9th bit for valid, rest 8 bits cuz 128 phys regs for now. 32 for 32 arch regs
@@ -30,7 +32,7 @@ logic [$clog2(NUM_REGS)-1:0] arch_to_physical[32]; // ISA regs to Physical Reg m
 
 always_ff @(posedge clk)
     begin
-        if (rst) // if reset just make x0 -> pr0, x1 -> pr1, ..., xn -> prn
+        if (rst | hardware_scheduler_swap_pc) // if reset just make x0 -> pr0, x1 -> pr1, ..., xn -> prn
             begin
                 // for (logic[4:0] i = 5'd0; i <= 5'd31; i = i + 1'b1) - !!! THIS DOESNT SIM BRUH
 

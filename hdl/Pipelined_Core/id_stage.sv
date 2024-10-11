@@ -13,6 +13,12 @@ import rv32i_types::*;
     input   logic   [4:0]       rd_s,
     input   logic   [31:0]      rd_v,
 
+    input   logic               hardware_scheduler_swap_pc,
+
+    output  logic   [31:0]  data[32],
+    input   logic   [31:0]  ooo_data[NUM_REGS],
+    input logic [$clog2(NUM_REGS)-1:0] rrf_arch_to_physical[32],
+
     output id_ex_reg_t          id_ex_reg_next
 );
 
@@ -377,7 +383,11 @@ pipeline_regfile rf_dec_1
     .rs2_s(rs2_s),
     .rd_s(rdd),
     .rs1_v(rs1_v),
-    .rs2_v(rs2_v)
+    .rs2_v(rs2_v),
+    .hardware_scheduler_swap_pc(hardware_scheduler_swap_pc),
+    .data(data),
+    .ooo_data(ooo_data),
+    .rrf_arch_to_physical(rrf_arch_to_physical)
 );
 
 endmodule

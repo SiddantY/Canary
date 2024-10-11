@@ -17,10 +17,36 @@ import rv32i_types::*;
     output  logic   [31:0]  dmem_wdata,
     input   logic           dmem_resp,
 
+    //HW Scheduler Ports
+    output   logic           ppl_mult_counter_en,
+    output   logic           ppl_mem_op_counter_en,
+    output   logic           ppl_flush_counter_en,
+    output   logic           ppl_rob_full_threshold,
+    output   logic           ppl_alu_op_counter_en,
+    
+    input   logic           hardware_scheduler_en,
+
+    input   logic           hardware_scheduler_swap_pc,
+    input   logic   [31:0]  hardware_scheduler_pc,
+
+
     output  logic   [31:0]  locked_address,
     output  logic           lock,
 
-    output  logic           amo
+    output  logic           amo,
+
+    output  logic   [31:0]  data[32],
+    input   logic   [31:0]  ooo_data[NUM_REGS],
+    input logic [$clog2(NUM_REGS)-1:0] rrf_arch_to_physical[32],
+
+    input  logic    [63:0]      ooo_order,
+
+    output mem_wb_reg_t mem_wb_reg,
+    output logic valid_commit_ppl,
+
+    output logic [63:0] order
+
+    
 
     // Single memory port connection when caches are integrated into design (CP3 and after)
     
@@ -36,7 +62,7 @@ import rv32i_types::*;
     
 );
 
-logic [63:0] order;
+// logic [63:0] order;
 
 logic istall;
 logic dstall;
@@ -62,7 +88,7 @@ logic dstall;
 if_id_reg_t if_id_reg_next, if_id_reg;
 id_ex_reg_t id_ex_reg_next, id_ex_reg;
 ex_mem_reg_t ex_mem_reg_next, ex_mem_reg;
-mem_wb_reg_t mem_wb_reg_next, mem_wb_reg;
+mem_wb_reg_t mem_wb_reg_next;
 
 // rd_v
 logic [31:0] rd_v;
@@ -71,22 +97,7 @@ logic br_en;
 logic [31:0] mispredict_pc;
 
 // rvfi signals
-logic monitor_valid;
-logic [63:0] monitor_order;
-logic [31:0] monitor_inst;
-logic [4:0] monitor_rs1_addr;
-logic [4:0] monitor_rs2_addr;
-logic [31:0] monitor_rs1_rdata;
-logic [31:0] monitor_rs2_rdata;
-logic [4:0] monitor_rd_addr;
-logic [31:0] monitor_rd_wdata;
-logic [31:0] monitor_pc_rdata;
-logic [31:0] monitor_pc_wdata;
-logic [31:0] monitor_mem_addr;
-logic [3:0] monitor_mem_rmask;
-logic [3:0] monitor_mem_wmask;
-logic [31:0] monitor_mem_rdata;
-logic [31:0] monitor_mem_wdata;
+
 
 always_ff @(posedge clk) // reworks according to monitor_valid @TODO
     begin : order_control_block
@@ -97,7 +108,11 @@ always_ff @(posedge clk) // reworks according to monitor_valid @TODO
             end
         else
             begin
-                if(mem_wb_reg.rvfi.monitor_valid && ~dstall && ~istall)
+                if(hardware_scheduler_swap_pc)
+                    begin
+                        order <= ooo_order + 1'b1;
+                    end
+                else if(mem_wb_reg.rvfi.monitor_valid && ~dstall && ~istall)
                     begin
                         order <= order + 1'b1;
                     end
@@ -154,6 +169,11 @@ always_comb
 if_stage if_stage_dec_1(
     .clk(clk),
     .rst(rst),
+    
+    .hardware_scheduler_en(hardware_scheduler_en),
+
+    .hardware_scheduler_swap_pc(hardware_scheduler_swap_pc),
+    .hardware_scheduler_pc(hardware_scheduler_pc),
 
     .imem_addr(imem_addr),
     .imem_rmask(imem_rmask),
@@ -179,11 +199,18 @@ id_stage id_stage_dec_1 // could split fetch into interface with imem and receiv
     .inst(if_id_reg.rvfi.monitor_inst), // imem_rdata
     .if_id_reg(if_id_reg),
 
-    .valid_write(monitor_valid),
+    .valid_write(valid_commit_ppl),
 
     .regf_we(mem_wb_reg.regf_we), // All 3 from writeback stage
     .rd_s(mem_wb_reg.rd_s),
     .rd_v(rd_v),
+
+    .hardware_scheduler_swap_pc(hardware_scheduler_swap_pc),
+
+    .data(data),
+    .ooo_data(ooo_data),
+
+    .rrf_arch_to_physical(rrf_arch_to_physical),
 
     .id_ex_reg_next(id_ex_reg_next)
 );
@@ -245,47 +272,11 @@ wb_stage wb_stage_dec_1
 
 // cache_unit cache_unit (.*);
 
-always_comb
-    begin : rvfi_signals
-        
-        if(rst)
-            begin
-                monitor_valid = '0;
-                monitor_order = '0;
-                monitor_inst = '0;
-                monitor_rs1_addr = '0;
-                monitor_rs2_addr = '0;
-                monitor_rs1_rdata = '0;
-                monitor_rs2_rdata = '0;
-                monitor_rd_addr = '0;
-                monitor_rd_wdata = '0;
-                monitor_pc_rdata = '0;
-                monitor_pc_wdata = '0;
-                monitor_mem_addr = '0;
-                monitor_mem_rmask = '0;
-                monitor_mem_wmask = '0;
-                monitor_mem_rdata = '0;
-                monitor_mem_wdata = '0;
-            end
-        else
-            begin
-                monitor_valid = mem_wb_reg.rvfi.monitor_valid && ~dstall && ~istall;
-                monitor_order = order;
-                monitor_inst = mem_wb_reg.rvfi.monitor_inst;
-                monitor_rs1_addr = mem_wb_reg.rvfi.monitor_rs1_addr;
-                monitor_rs2_addr = mem_wb_reg.rvfi.monitor_rs2_addr;
-                monitor_rs1_rdata = mem_wb_reg.rvfi.monitor_rs1_rdata;
-                monitor_rs2_rdata = mem_wb_reg.rvfi.monitor_rs2_rdata;
-                monitor_rd_addr = mem_wb_reg.rvfi.monitor_rd_addr;
-                monitor_rd_wdata = mem_wb_reg.rvfi.monitor_rd_wdata;
-                monitor_pc_rdata = mem_wb_reg.rvfi.monitor_pc_rdata;
-                monitor_pc_wdata = mem_wb_reg.rvfi.monitor_pc_wdata;
-                monitor_mem_addr = mem_wb_reg.rvfi.monitor_mem_addr;
-                monitor_mem_rmask = mem_wb_reg.rvfi.monitor_mem_rmask;
-                monitor_mem_wmask = mem_wb_reg.rvfi.monitor_mem_wmask;
-                monitor_mem_rdata = mem_wb_reg.rvfi.monitor_mem_rdata;
-                monitor_mem_wdata = mem_wb_reg.rvfi.monitor_mem_wdata;
-            end
+assign ppl_mult_counter_en = (mem_wb_reg.rvfi.monitor_valid && ~dstall && ~istall && mem_wb_reg.rvfi.monitor_inst[6:0] == op_b_reg && mem_wb_reg.rvfi.monitor_inst[31:25] == 7'b0000001) ? 1'b1 : 1'b0;
+assign ppl_mem_op_counter_en = (mem_wb_reg.rvfi.monitor_valid && ~dstall && ~istall && (mem_wb_reg.rvfi.monitor_inst[6:0] == op_b_load || mem_wb_reg.rvfi.monitor_inst[6:0] == op_b_store)) ? 1'b1 : 1'b0;
+assign ppl_flush_counter_en = br_en && !istall && !dstall;
+assign ppl_rob_full_threshold = 1'b0;
+assign ppl_alu_op_counter_en = (mem_wb_reg.rvfi.monitor_valid && ~dstall && ~istall && (mem_wb_reg.rvfi.monitor_inst[6:0] == op_b_reg || mem_wb_reg.rvfi.monitor_inst[6:0] == op_b_imm || mem_wb_reg.rvfi.monitor_inst[6:0] == op_b_lui || mem_wb_reg.rvfi.monitor_inst[6:0] == op_b_auipc)) ? 1'b1 : 1'b0;
 
-    end : rvfi_signals
+assign valid_commit_ppl = mem_wb_reg.rvfi.monitor_valid && ~dstall && ~istall;
 endmodule : pipeline_cpu

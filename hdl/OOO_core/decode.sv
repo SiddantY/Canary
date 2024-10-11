@@ -35,6 +35,17 @@ import rv32i_types::*;
     output logic valid_commit,
     output rvfi_commit_packet_t committer,
 
+    output logic rob_full,
+    output logic rob_empty,
+
+    input   logic   [31:0]      ppl_data[32],
+
+    output  logic   [31:0]  data[NUM_REGS],
+
+    output  logic [$clog2(NUM_REGS)-1:0] rrf_arch_to_physical[32],
+
+    input  logic    [63:0]      ppl_order,
+
     //unconditional branch stuff
     output logic jump_en,
     output logic [31:0] jump_pc,
@@ -51,6 +62,8 @@ import rv32i_types::*;
     input   logic   [31:0]  dmem_rdata,
     output  logic   [31:0]  dmem_wdata,
     input   logic           dmem_resp,
+
+    input   logic           hardware_scheduler_swap_pc,
 
     output  logic           amo,
     output  logic   [31:0]  address_to_lock,
@@ -119,8 +132,8 @@ reservation_station_entry_t lte;
 /*
 ROB VARS
 */
-logic rob_empty; // This tells us if the rob is empty, useless ?
-logic rob_full; // This tells us if the rob if full, prevent pc from incrementing when this is high
+// logic rob_empty; // This tells us if the rob is empty, useless ?
+// logic rob_full; // This tells us if the rob if full, prevent pc from incrementing when this is high
 logic [$clog2(DEC_ROB_SIZE)-1:0] instruction_to_rob_index; // This is the outputted rob index for the instruction
 rob_entry_t rob_line_to_commit; // This is the line to send to rrf, also some rvfi stuff needs to come from here
 
@@ -135,7 +148,7 @@ logic [NUM_REGS-1:0] phys_valid_vector;
 /*
 RRF VARS
 */
-logic [$clog2(NUM_REGS)-1:0] rrf_arch_to_physical[32];
+// logic [$clog2(NUM_REGS)-1:0] rrf_arch_to_physical[32];
 
 /*
 ADDRESS UNIT VARS
@@ -217,7 +230,8 @@ free_list free_list_dec(
     .phys_reg_valid(phys_valid_vector),
     .rrf_arch_to_physical(rrf_arch_to_physical),
     .arch_rd(arch_rd),
-    .reg_available(reg_available)
+    .reg_available(reg_available),
+    .hardware_scheduler_swap_pc(hardware_scheduler_swap_pc)
 );
 
 rat rat_dec(
@@ -249,7 +263,8 @@ rat rat_dec(
     //.valid_vec(alu_rs_valid_vector),
     .phys_valid_vector(phys_valid_vector),
     .flush(flush),
-    .rrf_arch_to_physical(rrf_arch_to_physical)
+    .rrf_arch_to_physical(rrf_arch_to_physical),
+    .hardware_scheduler_swap_pc(hardware_scheduler_swap_pc)
 );
 
 reservation_station #(
@@ -359,7 +374,8 @@ rrf rrf_dec(
     .update_mapping(valid_commit),// this needs to come from the rob, when an instruction is committed
     .liberated_phys_reg(liberated_reg), // goes to free list
     .reg_freed(reg_freed), // goes to free list
-    .rrf_arch_to_physical(rrf_arch_to_physical)
+    .rrf_arch_to_physical(rrf_arch_to_physical),
+    .hardware_scheduler_swap_pc(hardware_scheduler_swap_pc)
 );
 
 physical_regfile physical_regfile_dec
@@ -389,7 +405,11 @@ physical_regfile physical_regfile_dec
     .rs2_s_ldst(pr2_s_ldst),
     .rd_s_ldst(execute_outputs_ldst.phys_rd), // comes from execute, !!! comb this since multiple write busses maybe queue
     .rs1_v_ldst(pr1_val_ldst),
-    .rs2_v_ldst(pr2_val_ldst)
+    .rs2_v_ldst(pr2_val_ldst),
+    
+    .ppl_data(ppl_data),
+    .data(data),
+    .hardware_scheduler_swap_pc(hardware_scheduler_swap_pc)
 );
 
 address_unit address_unit_dec1(
@@ -443,7 +463,21 @@ always_ff @(posedge clk)
             begin
                 //line_to_execute <= '0;
                 //execute_valid_alu <= 1'b0;
-                order <= flush == 1'b1 ? committer.order + 1'b1: '0;
+                if(hardware_scheduler_swap_pc)
+                    begin
+                        order <= ppl_order;
+                    end
+                else if(flush)
+                    begin
+                        order <= committer.order + 1'b1;
+                    end
+                else 
+                    begin
+                        order <= '0;
+                    end
+                
+                // order <= flush == 1'b1 ? committer.order + 1'b1: '0;
+                
                 mul_busy <= 1'b0;
                 
                 line_to_execute <= '0;
@@ -457,7 +491,11 @@ always_ff @(posedge clk)
             end
         else
             begin
-                if(read_resp)
+                if(hardware_scheduler_swap_pc) 
+                    begin
+                        order <= ppl_order;
+                    end
+                else if(read_resp)
                     begin
                         order <= order + 1'b1;
                     end

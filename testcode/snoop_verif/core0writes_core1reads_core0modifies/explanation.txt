@@ -1,0 +1,1 @@
+Checks if a write by core 1 can be observed by core 0 in later reads

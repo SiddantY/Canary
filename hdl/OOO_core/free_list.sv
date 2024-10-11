@@ -11,7 +11,9 @@ import rv32i_types::*;
     input logic     [4:0]       arch_rd,
     input   logic   [$clog2(NUM_REGS)-1:0]   rrf_arch_to_physical[32],
     output  logic   [$clog2(NUM_REGS)-1:0]   free_reg,
-    output  logic           reg_available
+    output  logic           reg_available,
+
+    input   logic hardware_scheduler_swap_pc
 );
 
 logic [NUM_REGS-1:0] free_list_bit_vector;
@@ -21,7 +23,7 @@ assign free_reg = (arch_rd == 5'd0) ? 6'd0 : free_list_ptr;
 
 always_ff @(posedge clk)
     begin
-        if(rst) // if reset everything is free
+        if(rst | hardware_scheduler_swap_pc) // if reset everything is free
             begin
                 
                 free_list_bit_vector[31:0] <= 32'hFFFFFFFF;

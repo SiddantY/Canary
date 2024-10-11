@@ -23,6 +23,27 @@ import rv32i_types::*;
     output  logic   [31:0]      dmem_wdata,
     input   logic               dmem_resp,
 
+    //HW Scheduler Ports
+    output   logic               ooo_mult_counter_en,
+    output   logic               ooo_mem_op_counter_en,
+    output   logic               ooo_flush_counter_en,
+    output   logic               ooo_rob_full_en,
+    output   logic               ooo_alu_op_counter_en,
+
+    input   logic                hardware_scheduler_en,
+
+    input   logic           hardware_scheduler_swap_pc,
+    input   logic   [31:0]  hardware_scheduler_pc,
+
+    output  logic                rob_empty,
+
+    input   logic   [31:0]      ppl_data[32],
+
+    output  logic   [31:0]      data[NUM_REGS],
+
+    output logic [$clog2(NUM_REGS)-1:0] rrf_arch_to_physical[32],
+
+    input  logic    [63:0]      ppl_order,
     // Single memory port connection when caches are integrated into design (CP3 and after)
     
     // output logic   [31:0]      bmem_addr,
@@ -37,7 +58,10 @@ import rv32i_types::*;
 
     output  logic           amo,
     output  logic   [31:0]  address_to_lock,
-    output  logic           lock
+    output  logic           lock,
+
+    output rvfi_commit_packet_t committer,
+    output logic valid_commit_ooo
     
 );
 
@@ -73,8 +97,6 @@ import rv32i_types::*;
     data_bus_package_t execute_outputs, execute_outputs_mul;
 
     logic valid_commit;
-    rvfi_commit_packet_t committer;
-
 
     // logic   [31:0]  imem_addr;
     logic           imem_read;
@@ -105,6 +127,8 @@ import rv32i_types::*;
 
     logic [63:0] fc;
 
+    logic rob_full;
+
     always_ff @(posedge clk)
         begin
             if(rst) fc <= '0;
@@ -132,7 +156,10 @@ import rv32i_types::*;
         .pc(pc),
         .read_resp(read_resp),
         .request_new_instr(request_new_instr),
-        .pc_req(pc_req)
+        .pc_req(pc_req),
+        .hardware_scheduler_en(hardware_scheduler_en),
+        .hardware_scheduler_swap_pc(hardware_scheduler_swap_pc),
+        .hardware_scheduler_pc(hardware_scheduler_pc)
     );
 
     decode decode(
@@ -165,6 +192,16 @@ import rv32i_types::*;
         .dmem_rdata(dmem_rdata),
         .dmem_wdata(dmem_wdata),
         .dmem_resp(dmem_resp),
+
+        .ppl_order(ppl_order),
+
+        .rob_full(rob_full),
+        .rob_empty(rob_empty),
+
+        .ppl_data(ppl_data),
+        .data(data),
+        .hardware_scheduler_swap_pc(hardware_scheduler_swap_pc),
+        .rrf_arch_to_physical(rrf_arch_to_physical),
 
         .amo(amo),
         .address_to_lock(address_to_lock),
@@ -238,24 +275,6 @@ import rv32i_types::*;
         .execute_outputs_mul(execute_outputs_mul)
     );
 
-
-    logic monitor_valid;
-    logic [63:0] monitor_order;
-    logic [31:0] monitor_inst;
-    logic [4:0] monitor_rs1_addr;
-    logic [4:0] monitor_rs2_addr;
-    logic [31:0] monitor_rs1_rdata;
-    logic [31:0] monitor_rs2_rdata;
-    logic [4:0] monitor_rd_addr;
-    logic [31:0] monitor_rd_wdata;
-    logic [31:0] monitor_pc_rdata;
-    logic [31:0] monitor_pc_wdata;
-    logic [31:0] monitor_mem_addr;
-    logic [3:0] monitor_mem_rmask;
-    logic [3:0] monitor_mem_wmask;
-    logic [31:0] monitor_mem_rdata;
-    logic [31:0] monitor_mem_wdata;
-
 // always_ff @(posedge clk)
 //     begin
 //         if(rst)
@@ -276,48 +295,12 @@ import rv32i_types::*;
 //                 end
 //     end
 
-always_comb
-    begin
-        if(rst)
-            begin
-                monitor_valid = '0;
-                monitor_order = '0;
-                monitor_inst = '0;
-                monitor_rs1_addr = '0;
-                monitor_rs2_addr = '0;
-                monitor_rs1_rdata = '0;
-                monitor_rs2_rdata = '0;
-                monitor_rd_addr = '0;
-                monitor_rd_wdata = '0;
-                monitor_pc_rdata = '0;
-                monitor_pc_wdata = '0;
-                monitor_mem_addr = '0;
-                monitor_mem_rmask = '0;
-                monitor_mem_wmask = '0;
-                monitor_mem_rdata = '0;
-                monitor_mem_wdata = '0;
-            end
-        else
-            begin
-                monitor_valid = valid_commit == 1'b0 ? 1'b0 : 1'b1;
-                monitor_order = committer.order;
-                monitor_inst = committer.inst;
-                monitor_rs1_addr = committer.rs1_addr;
-                monitor_rs2_addr = committer.rs2_addr;
-                monitor_rs1_rdata = committer.rs1_rdata;
-                monitor_rs2_rdata = committer.rs2_rdata;
-                monitor_rd_addr = committer.rd_addr;
-                monitor_rd_wdata = committer.rd_wdata;
-                monitor_pc_rdata = committer.pc_rdata;
-                monitor_pc_wdata = committer.pc_wdata;
-                monitor_mem_addr = committer.mem_addr;
-                monitor_mem_rmask = committer.mem_rmask;
-                monitor_mem_wmask = committer.mem_wmask;
-                monitor_mem_rdata = committer.mem_rdata;
-                monitor_mem_wdata = committer.mem_wdata;
-            end
-    end
+assign ooo_mult_counter_en = (valid_commit && committer.inst[6:0] == op_b_reg && committer.inst[31:25] == 7'b0000001) ? 1'b1 : 1'b0;
+assign ooo_mem_op_counter_en = (valid_commit && (committer.inst[6:0] == op_b_load || committer.inst[6:0] == op_b_store)) ? 1'b1 : 1'b0;
+assign ooo_flush_counter_en = flush;
+assign ooo_rob_full_en = rob_full;
+assign ooo_alu_op_counter_en = (valid_commit && (committer.inst[6:0] == op_b_reg || committer.inst[6:0] == op_b_imm || committer.inst[6:0] == op_b_lui || committer.inst[6:0] == op_b_auipc)) ? 1'b1 : 1'b0;
 
 
-
+assign valid_commit_ooo = valid_commit;
 endmodule : ooo_cpu

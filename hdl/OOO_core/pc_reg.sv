@@ -10,6 +10,9 @@ import rv32i_types::*;
     input   logic   [31:0]  jalr_pc,
     input   logic           flush,
     input   logic   [31:0]  missed_pc,
+    input   logic           hardware_scheduler_en,
+    input   logic           hardware_scheduler_swap_pc,
+    input   logic   [31:0]  hardware_scheduler_pc,
     output  logic   [31:0]  pc, pc_prev // , pc_tmp
 );
 
@@ -33,8 +36,8 @@ always_ff @(posedge clk)
                     end
                 else
                     begin
-                        pc <= flush | jump_en | jalr_done ? pc_next : pc;
-                        pc_prev <= pc_prev;  
+                        pc <= hardware_scheduler_swap_pc | flush | jump_en | jalr_done ? pc_next : pc;
+                        pc_prev <= hardware_scheduler_swap_pc ? pc_next + 32'h4 : pc_prev;  
                     end
             end
     end
@@ -47,7 +50,12 @@ always_ff @(posedge clk)
 
 always_comb
     begin
-        if(br_en) // if branch pc is the branch pc
+
+        if(hardware_scheduler_swap_pc)
+            begin
+                pc_next = hardware_scheduler_pc;
+            end
+        else if(br_en) // if branch pc is the branch pc
             begin
                 pc_next = pc_branch;
             end

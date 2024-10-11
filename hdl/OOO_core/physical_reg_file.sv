@@ -6,15 +6,23 @@ import rv32i_types::*;
     input   logic           regf_we, regf_we_mul, regf_we_ldst,
     input   logic   [31:0]  rd_v, rd_v_mul, rd_v_ldst,
     input   logic   [$clog2(NUM_REGS)-1:0]   rs1_s, rs2_s, rd_s, rs1_s_mul, rs2_s_mul, rd_s_mul, rs1_s_ldst, rs2_s_ldst, rd_s_ldst,
-    output  logic   [31:0]  rs1_v, rs2_v, rs1_v_mul, rs2_v_mul, rs1_v_ldst, rs2_v_ldst
+    output  logic   [31:0]  rs1_v, rs2_v, rs1_v_mul, rs2_v_mul, rs1_v_ldst, rs2_v_ldst,
+    input   logic               hardware_scheduler_swap_pc,
+    input   logic   [31:0]      ppl_data[32],
+
+    output  logic   [31:0]  data[NUM_REGS]
 );
 
-    logic   [31:0]  data [NUM_REGS]; // physical regfile of 128 regs :x_x: 
+    // logic   [31:0]  data [NUM_REGS]; // physical regfile of 128 regs :x_x: 
 
     always_ff @(posedge clk) begin
         if (rst) begin // at reset set every thing to 0
             for (int i = 0; i < NUM_REGS; i++) begin
                 data[i] <= '0;
+            end
+        end else if(hardware_scheduler_swap_pc) begin
+            for(int i = 0; i < 32; i++) begin
+                data[i] <= ppl_data[i];
             end
         end else begin
 

@@ -195,15 +195,15 @@ module monitor (
                     cycle_count = longint'(0);
                     start_time = $time;
                     power_start_time = $time;
-                    $display("Monitor: Segment Start time is %t", $time);
+                    $display("OoO Monitor: Segment Start time is %t", $time);
                 end
                 if (itf.inst[channel] == 32'h00202013) begin
-                    $display("Monitor: Segment Stop time is %t", $time);
+                    $display("OoO Monitor: Segment Stop time is %t", $time);
                     done_print_ipc = 1'b1;
                     ipc = real'(inst_count) / cycle_count;
                     total_time = $time - start_time;
-                    $display("Monitor: Segment IPC: %f", ipc);
-                    $display("Monitor: Segment Time: %t", total_time);
+                    $display("OoO Monitor: Segment IPC: %f", ipc);
+                    $display("OoO Monitor: Segment Time: %t", total_time);
                     if (!done_print_power) begin
                         done_print_power = 1'b1;
                         $fwrite(time_fd, "%0t\n", power_start_time);
@@ -211,11 +211,11 @@ module monitor (
                     end
                 end
                 if (itf.inst[channel] == 32'h00302013) begin
-                    $display("Monitor: Power Start time is %t", $time);
+                    $display("OoO Monitor: Power Start time is %t", $time);
                     power_start_time = $time;
                 end
                 if (itf.inst[channel] == 32'h00402013) begin
-                    $display("Monitor: Power Stop time is %t", $time);
+                    $display("OoO Monitor: Power Stop time is %t", $time);
                     done_print_power = 1'b1;
                     $fwrite(time_fd, "%0t\n", power_start_time);
                     $fwrite(time_fd, "%0t", $time);
@@ -229,8 +229,8 @@ module monitor (
             done_print_ipc = 1'b1;
             ipc = real'(inst_count) / cycle_count;
             total_time = $time - start_time;
-            $display("Monitor: Total IPC: %f", ipc);
-            $display("Monitor: Total Time: %t", total_time);
+            $display("OoO Monitor: Total IPC: %f", ipc);
+            $display("OoO Monitor: Total Time: %t", total_time);
         end
         if (!done_print_power) begin
             done_print_power = 1'b1;
@@ -275,7 +275,7 @@ module monitor (
         for (int unsigned channel=0; channel < 8; ++channel) begin
             if(itf.valid[channel]) begin
                 if (itf.order[channel] % 1000 == 0) begin
-                    $display("dut commit No.%d, rd_s: x%02d, rd: 0x%h", itf.order[channel], itf.rd_addr[channel], itf.rd_addr[channel] ? itf.rd_wdata[channel] : 5'd0);
+                    $display("OoO dut commit No.%d, rd_s: x%02d, rd: 0x%h", itf.order[channel], itf.rd_addr[channel], itf.rd_addr[channel] ? itf.rd_wdata[channel] : 5'd0);
                 end
                 if (itf.inst[channel][1:0] == 2'b11) begin
                     $fwrite(spike_fd, "core   0: 3 0x%h (0x%h)", itf.pc_rdata[channel], itf.inst[channel]);

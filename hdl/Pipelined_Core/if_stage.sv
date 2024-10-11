@@ -13,6 +13,12 @@ import rv32i_types::*;
     input   logic   [31:0]  mispredict_pc,
 
     input   logic   [63:0]  order,
+    
+    //HW Scheduler Port
+    input   logic           hardware_scheduler_en,
+
+    input   logic           hardware_scheduler_swap_pc,
+    input   logic   [31:0]  hardware_scheduler_pc,
 
     output  logic           istall,
     input   logic           dstall,
@@ -25,12 +31,16 @@ logic [31:0] pc, pc_prev;
 always_comb
     begin
 
-        imem_rmask = 4'b1111;
+        imem_rmask = hardware_scheduler_en ? 4'b0000 : 4'b1111;//stop fetching memory when stalling,
         imem_addr = pc;
 
         if(imem_resp)
             begin
                 istall = 1'b0;
+            end
+        else if(hardware_scheduler_en) //if ab to swap, keep pipes goin
+            begin
+            istall = 1'b0;
             end
         else
             begin
@@ -39,13 +49,13 @@ always_comb
         
         if_id_reg_next.pc = pc;
         if_id_reg_next.branch_pred = 1'b0; // static not taken for now
-        if_id_reg_next.predicted_pc = pc + 3'b100; // static not taken for now
+        if_id_reg_next.predicted_pc = pc + 32'h4; // static not taken for now
 
-        if_id_reg_next.rvfi.monitor_valid = 1'b1;
+        if_id_reg_next.rvfi.monitor_valid = hardware_scheduler_en ? 1'b0 : 1'b1;
         if_id_reg_next.rvfi.monitor_order = order;
-        if_id_reg_next.rvfi.monitor_inst  = imem_rdata;
+        if_id_reg_next.rvfi.monitor_inst  = hardware_scheduler_en ? 32'h00000013 : imem_rdata;//insert nops
         if_id_reg_next.rvfi.monitor_pc_rdata = pc;
-        if_id_reg_next.rvfi.monitor_pc_wdata = pc + 3'b100; // will change in execute if jal/jalr/branch
+        if_id_reg_next.rvfi.monitor_pc_wdata = pc + 32'h4; // will change in execute if jal/jalr/branch
     end
 
 pipeline_pc_reg pc_reg_dec_1(
@@ -58,7 +68,10 @@ pipeline_pc_reg pc_reg_dec_1(
     .mispredict_br_en(mispredict_br_en),
     .mispredict_pc(mispredict_pc),
 
-    .stall(istall | dstall)
+    .hardware_scheduler_swap_pc(hardware_scheduler_swap_pc),
+    .hardware_scheduler_pc(hardware_scheduler_pc),
+
+    .stall(istall | dstall | hardware_scheduler_en)
 );
 
 endmodule
