@@ -44,7 +44,9 @@ import rv32i_types::*;
     output mem_wb_reg_t mem_wb_reg,
     output logic valid_commit_ppl,
 
-    output logic [63:0] order
+    output logic [63:0] order,
+
+    output logic pipeline_registers_empty
 
     
 
@@ -97,6 +99,8 @@ logic br_en;
 logic [31:0] mispredict_pc;
 
 // rvfi signals
+
+assign pipeline_registers_empty = ~if_id_reg.rvfi.monitor_valid & ~id_ex_reg.rvfi.monitor_valid & ~ex_mem_reg.rvfi.monitor_valid & ~mem_wb_reg.rvfi.monitor_valid;
 
 
 always_ff @(posedge clk) // reworks according to monitor_valid @TODO

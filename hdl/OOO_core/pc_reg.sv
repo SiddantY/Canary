@@ -29,7 +29,7 @@ always_ff @(posedge clk)
         else // pc <- pc_next yk
             begin
                 // TODO: add stalling pc on Q full
-                if(request_new_inst == 1'b1)
+                if(request_new_inst == 1'b1 && ~hardware_scheduler_en)
                     begin
                         pc <= pc_next;
                         pc_prev <= pc;

@@ -88,6 +88,10 @@ logic   [31:0]  ooo_data[NUM_REGS];
 
 logic [$clog2(NUM_REGS)-1:0] rrf_arch_to_physical[32];
 
+logic [31:0] last_valid_pc_wdata;
+
+logic pipeline_registers_empty;
+
 ooo_cpu ooo(
     .clk            (clk),
     .rst            (rst),
@@ -131,7 +135,7 @@ ooo_cpu ooo(
     .hardware_scheduler_en(hardware_scheduler_en),
 
     .hardware_scheduler_swap_pc(hardware_scheduler_swap_pc),
-    .hardware_scheduler_pc(mem_wb_reg.rvfi.monitor_pc_wdata - 32'h4),
+    .hardware_scheduler_pc(last_valid_pc_wdata),
 
     .committer(committer),
     .valid_commit_ooo(valid_commit_ooo)
@@ -175,7 +179,8 @@ pipeline_cpu ppl(
     
     .mem_wb_reg(mem_wb_reg),
     .valid_commit_ppl(valid_commit_ppl),
-    .order(order_ppl)    
+    .order(order_ppl),
+    .pipeline_registers_empty(pipeline_registers_empty)    
 );
 
 memory memory_unit(
@@ -256,7 +261,8 @@ hardware_scheduler hw_sch (
     .rob_empty(rob_empty),
 
     .hardware_scheduler_enable(hardware_scheduler_en),
-    .hardware_scheduler_swap_pc(hardware_scheduler_swap_pc)
+    .hardware_scheduler_swap_pc(hardware_scheduler_swap_pc),
+    .pipeline_registers_empty(pipeline_registers_empty)
 );
 
 
@@ -389,5 +395,18 @@ always_comb
             end
 
     end : rvfi_signals_ppl
+
+
+always_ff @(posedge clk) begin
+    if(rst) begin
+        last_valid_pc_wdata <= '0;
+    end else begin
+        if(thread_aligned == 1'b1 && monitor_valid1) begin
+            last_valid_pc_wdata <= monitor_pc_wdata1;
+        end else if(thread_aligned == 1'b0 && monitor_valid) begin
+            last_valid_pc_wdata <= monitor_pc_wdata;
+        end
+    end
+end
 
 endmodule

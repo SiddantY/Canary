@@ -67,8 +67,8 @@ always_comb
         imem_read = 1'b1; // always tryna read
         imem_addr = pc;   // always show pc
         if(imem_resp) begin
-            iq_write_enable = 1'b1; // set write enable to allow writing to the queue
-            iq_instruction_in = imem_rdata; // set data in 
+            iq_write_enable = hardware_scheduler_en ? 1'b0 : 1'b1; // set write enable to allow writing to the queue
+            iq_instruction_in = hardware_scheduler_en ? 32'h0000_0013 : imem_rdata; // set data in 
         end else begin
             iq_write_enable = 1'b0; // no response so don't write to the queue
             iq_instruction_in = '0; 
@@ -97,7 +97,7 @@ pc_reg pc_rec(
 
     .hardware_scheduler_swap_pc(hardware_scheduler_swap_pc),
     .hardware_scheduler_pc(hardware_scheduler_pc),
-    
+
     // .br_en(ben),
     .br_en(1'b0),
     .pc(pc),
@@ -111,11 +111,11 @@ pc_reg pc_rec(
 logic iq_write;
 logic [31:0] raddr_prev;
 
-assign iq_write =  (raddr_prev == imem_raddr || imem_raddr == '0) ? 1'b0 : 1'b1;
+assign iq_write =  (raddr_prev == imem_raddr || imem_raddr == '0) || hardware_scheduler_en ? 1'b0 : 1'b1;
 // assign iq_write = ((~iq_full && !imem_stall && !iq_full_counter) || jalr_done) && (imem_resp &&!iq_full_counter);
 
 always_ff @( posedge clk ) begin : wack_stall
-    if(rst | (flush | jump_en | jalr_done)) begin
+    if(rst | (flush | jump_en | jalr_done | hardware_scheduler_en)) begin
         raddr_prev <= '0;
     end else begin
         raddr_prev <= imem_raddr;

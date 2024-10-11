@@ -27,7 +27,9 @@ import rv32i_types::*;
     // Output
     
     output      logic       hardware_scheduler_enable,
-    output      logic       hardware_scheduler_swap_pc
+    output      logic       hardware_scheduler_swap_pc,
+
+    input       logic       pipeline_registers_empty
 );
 
 localparam ROB_THRESHOLD = 6666;
@@ -251,10 +253,21 @@ always_ff @(posedge clk) begin
     end
 end
 
+
+logic rob_delay;
+
+always_ff @(posedge clk) begin
+    if(rst) begin
+        rob_delay <= 1'b0;
+    end else begin
+        rob_delay <= rob_empty;
+    end
+end
+
 always_comb begin
     hardware_scheduler_swap_pc = 1'b0;
 
-    if(hardware_scheduler_enable && rob_empty) hardware_scheduler_swap_pc = 1'b1;
+    if(hardware_scheduler_enable && rob_empty && pipeline_registers_empty) hardware_scheduler_swap_pc = 1'b1;
 end
 
 endmodule

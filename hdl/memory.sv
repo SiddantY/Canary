@@ -525,6 +525,8 @@ logic [31:0] ppl_dmem_wdata_latch, ppl_dmem_wdata_use;
 
 logic ooo_cache_hit, ppl_cache_hit;
 
+logic ppl_bus_out_cache_dirty, ooo_bus_out_cache_dirty;
+
 snoopbus snoopbus_dec_1
 (
     .clk(clk),
@@ -623,6 +625,9 @@ snoopbus_d_cache ooo_d_cache
     .this_address_locked_by_you(this_address_locked_by_ooo),
     .this_address_locked_by_others(this_address_locked_by_ppl),
 
+    .bus_in_cache_dirty(ppl_bus_out_cache_dirty),
+    .bus_out_cache_dirty(ooo_bus_out_cache_dirty),
+
     .unlock(ooo_unlock)
 
 );
@@ -701,6 +706,9 @@ snoopbus_d_cache ppl_d_cache
 
     .this_address_locked_by_you(this_address_locked_by_ppl),
     .this_address_locked_by_others(this_address_locked_by_ooo),
+
+    .bus_in_cache_dirty(ooo_bus_out_cache_dirty),
+    .bus_out_cache_dirty(ppl_bus_out_cache_dirty),
 
     .unlock(ppl_unlock)
 

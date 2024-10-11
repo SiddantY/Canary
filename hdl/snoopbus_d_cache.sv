@@ -62,7 +62,10 @@ import rv32i_types::*;
     input   logic   [31:0]  this_address_locked_by_others,
     input   logic   [31:0]  this_address_locked_by_you,
 
-    output  logic           unlock
+    output  logic           unlock,
+
+    input   logic           bus_in_cache_dirty,
+    output  logic           bus_out_cache_dirty
 
 );
 
@@ -340,7 +343,7 @@ always_comb begin : state_signals
                     // cache_wmask[4*offset[4:2]+:4] = ufp_wmask;
 
                     case(tag_out[way_index][25:24])
-                        mesi_i : tag_in[way_index] = {2'b00, 1'b0, tag}; // shouldn't ever be true, go directly to allocate ? 
+                        mesi_i : tag_in[way_index] = {2'b00, 1'b1, tag}; // shouldn't ever be true, go directly to allocate ? 
                         mesi_s : begin
                             // t_write_en[way_index] = 1'b1; 
                             tag_in[way_index] = {mesi_m, 1'b1, tag};
@@ -439,6 +442,9 @@ logic [3:0] bus_way_hit;
 logic [1:0] bus_way_index;
 
 always_comb begin : cache_hit_logic_bus_port
+
+    bus_out_cache_dirty = 1'b0;
+
     tag_in1[0] = '0;
     tag_in1[1] = '0;
     tag_in1[2] = '0;
@@ -494,8 +500,9 @@ always_comb begin : cache_hit_logic_bus_port
             else if (bus_incomming_command_command == bus_rd) begin
 
                 t_write_en1[bus_way_index] = 1'b1;
-                tag_in1[bus_way_index] = {mesi_s, 1'b1, bus_resp_addr[31:9]};
+                tag_in1[bus_way_index] = tag_out1[bus_way_index][23] == 1'b1 ? {mesi_i, tag_out1[bus_way_index][23], bus_resp_addr[31:9]} : {mesi_s, tag_out1[bus_way_index][23], bus_resp_addr[31:9]};
                 bus_data_out = data_out1[bus_way_index];
+                bus_out_cache_dirty = tag_out1[bus_way_index][23];
 
 
             end
@@ -504,7 +511,7 @@ always_comb begin : cache_hit_logic_bus_port
         data_in1[PLRU_way] = bus_resp_data;
         d_write_en1[PLRU_way] = 1'b1;
         t_write_en1[PLRU_way] = 1'b1;
-        tag_in1[PLRU_way] = {mesi_s, 1'b0, ufp_addr[31:9]};
+        tag_in1[PLRU_way] = {mesi_s, bus_in_cache_dirty, ufp_addr[31:9]};
         v_write_en1[PLRU_way] = 1'b1;
     end
 end
