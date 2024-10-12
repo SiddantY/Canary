@@ -111,7 +111,7 @@ pc_reg pc_rec(
 logic iq_write;
 logic [31:0] raddr_prev;
 
-assign iq_write =  (raddr_prev == imem_raddr || imem_raddr == '0) || hardware_scheduler_en ? 1'b0 : 1'b1;
+assign iq_write =  (raddr_prev == imem_raddr || imem_raddr == '0) || hardware_scheduler_en || (pc[31:20] != imem_raddr[31:20])? 1'b0 : 1'b1;
 // assign iq_write = ((~iq_full && !imem_stall && !iq_full_counter) || jalr_done) && (imem_resp &&!iq_full_counter);
 
 always_ff @( posedge clk ) begin : wack_stall

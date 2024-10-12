@@ -118,8 +118,8 @@ end
 // AMO STUFF
 logic ppl_unlock;
 logic ooo_unlock;
-logic [31:0] this_address_locked_by_ppl;
-logic [31:0] this_address_locked_by_ooo;
+logic [32:0] this_address_locked_by_ppl;
+logic [32:0] this_address_locked_by_ooo;
 
 // logic ooo_lock;
 // logic ppl_lock;

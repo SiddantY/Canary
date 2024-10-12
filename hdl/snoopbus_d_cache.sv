@@ -59,8 +59,8 @@ import rv32i_types::*;
 
     input   logic           flush_latch,
 
-    input   logic   [31:0]  this_address_locked_by_others,
-    input   logic   [31:0]  this_address_locked_by_you,
+    input   logic   [32:0]  this_address_locked_by_others,
+    input   logic   [32:0]  this_address_locked_by_you,
 
     output  logic           unlock,
 
@@ -154,7 +154,7 @@ always_comb begin : next_state_logic
                 else begin
                     if (cache_hit && ufp_wmask != 0 && tag_out[way_index][25:24] != 2'b11) next_state = acquire_bus_write;
                     else if(cache_hit) next_state = idle;
-                    else if (tag_out[PLRU_way][23]) next_state = write_back;
+                    else if (tag_out[PLRU_way][23] && tag_out[PLRU_way][25:24] != 2'b00) next_state = write_back;
                     else if(tag_out[PLRU_way][25:24] == 2'b00) next_state = acquire_bus_read;                 
                     else next_state = acquire_bus_read;
                 end
@@ -322,7 +322,7 @@ always_comb begin : state_signals
 
         compare : begin
             
-            if(ufp_addr == this_address_locked_by_others) begin
+            if(ufp_addr == this_address_locked_by_others[31:0] && this_address_locked_by_others[32] == 1'b1) begin
                 
                 ufp_resp = 1'b1;
                 ufp_rdata = 32'hFFFF_FFFF;
@@ -358,7 +358,7 @@ always_comb begin : state_signals
                     
                     t_write_en[way_index] = 1'b1;
 
-                    if(ufp_addr == this_address_locked_by_you && amo) unlock = 1'b1;
+                    if(ufp_addr == this_address_locked_by_you[31:0] && amo) unlock = 1'b1;
 
                     if(amo) ufp_rdata = 32'h0000_0000;
 

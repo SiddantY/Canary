@@ -213,6 +213,8 @@ always_comb
                     default: dmem_wmask = '0;
                 endcase
 
+                // if(dmem_addr == '0) dmem_wmask = '0;
+
                 unique case (ld_st_queue_data_out.funct3)
                     sb: dmem_wdata[8 *dmem_addr_full[1:0] +: 8 ] = pr2_val_ldst[7 :0];
                     sh: dmem_wdata[16*dmem_addr_full[1]   +: 16] = pr2_val_ldst[15:0];
@@ -235,6 +237,8 @@ always_comb
                     lw:      dmem_rmask = 4'b1111;
                     default: dmem_rmask = '0;  
                 endcase
+
+                // if(dmem_addr == '0) dmem_rmask = '0;
                 
                 dmem_wmask = '0;
 

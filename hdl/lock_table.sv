@@ -13,8 +13,8 @@ module lock_table (
 
     input   logic           ppl_unlock,
 
-    output  logic   [31:0]  this_address_locked_by_ooo,
-    output  logic   [31:0]  this_address_locked_by_ppl
+    output  logic   [32:0]  this_address_locked_by_ooo,
+    output  logic   [32:0]  this_address_locked_by_ppl
 );
 
 logic [32:0] lock_table[2]; // L/Address
@@ -43,8 +43,8 @@ always_ff @(posedge clk) begin
 end
 
 always_comb begin
-    this_address_locked_by_ooo = lock_table[0][31:0];
-    this_address_locked_by_ppl = lock_table[1][31:0];
+    this_address_locked_by_ooo = lock_table[0][32:0];
+    this_address_locked_by_ppl = lock_table[1][32:0];
 end
 
 
