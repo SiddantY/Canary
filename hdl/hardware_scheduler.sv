@@ -264,10 +264,30 @@ always_ff @(posedge clk) begin
     end
 end
 
+logic rob_delay1;
+
+always_ff @(posedge clk) begin
+    if(rst) begin
+        rob_delay1 <= 1'b0;
+    end else begin
+        rob_delay1 <= rob_delay;
+    end
+end
+
+logic ppl_delay;
+
+always_ff @(posedge clk) begin
+    if(rst) begin
+        ppl_delay <= 1'b0;
+    end else begin
+        ppl_delay <= pipeline_registers_empty;
+    end
+end
+
 always_comb begin
     hardware_scheduler_swap_pc = 1'b0;
 
-    if(hardware_scheduler_enable && rob_empty && pipeline_registers_empty) hardware_scheduler_swap_pc = 1'b1;
+    if(hardware_scheduler_enable && rob_delay1 && ppl_delay) hardware_scheduler_swap_pc = 1'b1;
 end
 
 endmodule

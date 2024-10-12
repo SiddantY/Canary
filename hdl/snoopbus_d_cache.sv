@@ -127,10 +127,10 @@ logic cache_hit;
 logic [3:0] way_hit;
 
 always_comb begin : cache_hit_logic
-    way_hit[0] = (tag_out[0][22:0] == ufp_addr[31:9]) && valid_out[0];
-    way_hit[1] = (tag_out[1][22:0] == ufp_addr[31:9]) && valid_out[1];
-    way_hit[2] = (tag_out[2][22:0] == ufp_addr[31:9]) && valid_out[2];
-    way_hit[3] = (tag_out[3][22:0] == ufp_addr[31:9]) && valid_out[3];
+    way_hit[0] = (tag_out[0][22:0] == ufp_addr[31:9]) && valid_out[0] && tag_out[0][25:24] != 2'b00;
+    way_hit[1] = (tag_out[1][22:0] == ufp_addr[31:9]) && valid_out[1] && tag_out[1][25:24] != 2'b00;
+    way_hit[2] = (tag_out[2][22:0] == ufp_addr[31:9]) && valid_out[2] && tag_out[2][25:24] != 2'b00;
+    way_hit[3] = (tag_out[3][22:0] == ufp_addr[31:9]) && valid_out[3] && tag_out[3][25:24] != 2'b00;
 
     cache_hit = way_hit[0] | way_hit[1] | way_hit[2] | way_hit[3];
 end

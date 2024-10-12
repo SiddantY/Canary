@@ -121,7 +121,7 @@ always_comb begin : bus_outgoing_signals
 
     bus_resp = '0;
     bus_ready = '0;
-    bus_command_address = '0;
+    bus_command_address = 'x;
     bus_command_command = '0;
     bus_command_data    = '0;
 

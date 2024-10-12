@@ -65,7 +65,7 @@ always_comb
     begin
 
         imem_read = 1'b1; // always tryna read
-        imem_addr = pc;   // always show pc
+        imem_addr = hardware_scheduler_en ? '0 : pc;   // always show pc
         if(imem_resp) begin
             iq_write_enable = hardware_scheduler_en ? 1'b0 : 1'b1; // set write enable to allow writing to the queue
             iq_instruction_in = hardware_scheduler_en ? 32'h0000_0013 : imem_rdata; // set data in 
@@ -133,7 +133,7 @@ instruction_queue(
     .jump_en(jump_en),
     .jalr_en(jalr_en),
     .jalr_done(jalr_done),
-    .flush(flush),
+    .flush(flush | hardware_scheduler_swap_pc),
     // .data_in({ben, ppc, imem_raddr, iq_instruction_in}), // first 32 pc, bottom 32 instr -- NEWLY ADDED PC PREV
     // .data_in({br_en_out, ppc_out, imem_raddr, iq_instruction_in}), 
     .data_in({imem_raddr, iq_instruction_in}), 
