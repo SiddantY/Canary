@@ -26,10 +26,14 @@ import rv32i_types::*;
 logic [1:0] r1_mux_select, r2_mux_select;
 
 // ALU Vars
-logic [31:0] a, b, f;
+logic [31:0] a, b, f, mul_out;
 
 //ALU select logic vals
 logic [31:0] r1_val, r2_val;
+
+logic [63:0] p;
+
+
 
 // PC Adder Vars
 // logic [31:0] mispredict_pc;
@@ -118,11 +122,12 @@ always_comb
 
 always_comb
     begin : fill_out_reg_next
+        ex_mem_reg_next = '0;
         ex_mem_reg_next.regf_we = id_ex_reg.regf_we;
         ex_mem_reg_next.mem_read = id_ex_reg.mem_read;
         ex_mem_reg_next.mem_write = id_ex_reg.mem_write;
 
-        ex_mem_reg_next.alu_result = f;
+        ex_mem_reg_next.alu_result = (id_ex_reg.if_mul) ? mul_out : f;
         ex_mem_reg_next.rs2_v = r2_val;
         ex_mem_reg_next.rd_s = id_ex_reg.rd_s;
         ex_mem_reg_next.funct3 = id_ex_reg.funct3;
@@ -141,7 +146,7 @@ always_comb
         ex_mem_reg_next.rvfi.monitor_rs2_rdata = r2_val; 
         ex_mem_reg_next.rvfi.monitor_regf_we = id_ex_reg.rvfi.monitor_regf_we;
         ex_mem_reg_next.rvfi.monitor_rd_addr = id_ex_reg.rvfi.monitor_rd_addr;
-        ex_mem_reg_next.rvfi.monitor_rd_wdata = f; 
+        ex_mem_reg_next.rvfi.monitor_rd_wdata = (id_ex_reg.if_mul) ? mul_out : f; 
         ex_mem_reg_next.rvfi.monitor_pc_rdata = id_ex_reg.rvfi.monitor_pc_rdata; 
         ex_mem_reg_next.rvfi.monitor_pc_wdata = ((id_ex_reg.branch & f[0])| id_ex_reg.jal | id_ex_reg.jalr) ? mispredict_pc : id_ex_reg.rvfi.monitor_pc_wdata; 
 
@@ -166,6 +171,20 @@ pipeline_alu alu_dec_1(
     .a(a), 
     .b(b),
     .f(f)
+);
+
+
+
+// everything multiply
+
+assign mul_out = (id_ex_reg.half) ? p[63:32] : p[31:0]; 
+
+
+wallace_multiplier_pipeline multiplier_dec_1 (
+    .mul_type(id_ex_reg.mul_type),
+    .a(a),
+    .b(b),
+    .p(p)
 );
 
 endmodule

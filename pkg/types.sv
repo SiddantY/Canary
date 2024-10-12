@@ -167,6 +167,10 @@ package rv32i_types;
         bit [31:0]  jal_imm;
 
         bit [6:0]   funct7;
+
+        bit half;
+        bit [1:0]   mul_type;
+        bit if_mul;
         
         rvfi_data_t rvfi;
     } id_ex_reg_t;

@@ -48,6 +48,8 @@ logic jal;
 logic alu_src;
 logic calu;
 logic [2:0] aluop;
+logic mul, mul_h;
+logic [1:0] m_type;
 
 //Regfile Vars
 
@@ -132,6 +134,7 @@ always_comb
 always_comb
     begin : immediate_generator
 
+
         s_imm  = {{21{inst[31]}}, inst[30:25], inst[11:7]};
         b_imm  = {{20{inst[31]}}, inst[7], inst[30:25], inst[11:8], 1'b0};
         u_imm  = {inst[31:12], 12'h000};
@@ -215,6 +218,9 @@ always_comb
             default: jal = 'x;
         endcase
 
+        mul = '0;
+        m_type = 'x;
+
         unique case(opcode)
             op_b_lui: begin
                 calu = 1'b1;
@@ -270,18 +276,41 @@ always_comb
                 end
             op_b_reg: begin
                     unique case (funct3)
+
+                        sll: begin
+                            if (funct7[0]) begin
+                                mul = '1;
+                                m_type = 2'b01;
+                                mul_h = '1;
+                            end
+                        end
                         slt: begin
-                            calu = 1'b0;
-                            aluop = blt;
+                             if (funct7[0]) begin
+                                mul = '1;
+                                m_type = 2'b10;
+                                mul_h = '1;
+                            end
+                            else begin
+                                calu = 1'b0;
+                                aluop = blt;
+                            end
                         end
                         sltu: begin
-                            aluop = bltu;
-                            calu = 1'b0;
+                            if (funct7[0]) begin
+                                mul = '1;
+                                m_type = 2'b00;
+                                mul_h = '1;
+                            end
+                            else begin
+                                aluop = bltu;
+                                calu = 1'b0;
+                            end
                         end
                         sr: begin
                             if (funct7[5]) begin
                                 aluop = alu_sra;
-                            end else begin
+                            end
+                             else begin
                                 aluop = alu_srl;
                             end
                             calu = 1'b1;
@@ -289,7 +318,13 @@ always_comb
                         add: begin
                             if (funct7[5]) begin
                                 aluop = alu_sub;
-                            end else begin
+                            end 
+                            else if (funct7[0]) begin
+                                mul = '1;
+                                m_type = 2'b01;
+                                mul_h = '0;
+                            end
+                            else begin
                                 aluop = alu_add;
                             end
                             calu = 1'b1;
@@ -305,7 +340,6 @@ always_comb
                 calu = '1;
             end
         endcase
-
     end : control_unit
 
 logic [4:0] rdd;
@@ -321,6 +355,8 @@ always_comb
 
 always_comb
     begin : setting_if_id_reg_next
+
+        id_ex_reg_next = '0;
 
         id_ex_reg_next.pc = if_id_reg.pc;
         id_ex_reg_next.branch_pred = if_id_reg.branch_pred;
@@ -370,6 +406,11 @@ always_comb
 
         id_ex_reg_next.rvfi.monitor_pc_rdata = if_id_reg.rvfi.monitor_pc_rdata;
         id_ex_reg_next.rvfi.monitor_pc_wdata = if_id_reg.rvfi.monitor_pc_wdata;
+
+        // multiply 
+        id_ex_reg_next.if_mul = mul;
+        id_ex_reg_next.mul_type = m_type;
+        id_ex_reg_next.half = mul_h;
 
     end : setting_if_id_reg_next
 
