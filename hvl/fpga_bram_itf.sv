@@ -20,6 +20,7 @@ interface fpga_bram_itf #(
     logic                            read_en_c_to_m;
     logic                            write_en_c_to_m;
     logic                            empty_CPU_to_FPGA_FIFO;
+    logic [35:0]                     data_out_CPU_to_FPGA_FIFO;
 
     // logic  [ADDRESS_WIDTH-1:0]  addra;
     // logic  [DATA_WIDTH-1:0]     dina;
@@ -40,6 +41,7 @@ interface fpga_bram_itf #(
         input                   write_en_c_to_m,
         input                   empty_CPU_to_FPGA_FIFO,
         input                   full_FPGA_to_CPU_FIFO,
+        input                   data_out_CPU_to_FPGA_FIFO,
 
         output                  address_data_bus_m_to_c,
         output                  resp_m_to_c,

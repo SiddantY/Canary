@@ -30,7 +30,8 @@ module fpga_mem_controller(
     output logic read_en_c_to_m,
     output logic write_en_c_to_m,
     output logic empty_CPU_to_FPGA_FIFO,
-    output logic full_FPGA_to_CPU_FIFO
+    output logic full_FPGA_to_CPU_FIFO,
+    output logic [35:0] data_out_CPU_to_FPGA_FIFO
 );
 
     enum logic [4:0] {
@@ -59,7 +60,7 @@ module fpga_mem_controller(
     logic        full_CPU_to_FPGA_FIFO; // Uses
 
     // FPGA Signals
-    logic [35:0] data_out_CPU_to_FPGA_FIFO; // Uses
+    // logic [35:0] data_out_CPU_to_FPGA_FIFO; // Uses
     // logic        r_en_CPU_to_FPGA_FIFO; // Drives
     // logic        empty_CPU_to_FPGA_FIFO; // Uses
 
@@ -114,6 +115,8 @@ module fpga_mem_controller(
     // Control Signals
     logic [3:0] read_counter; // 0 -> 7 + 1 overflow bit
     logic inc_read_counter;
+    logic [3:0] write_counter; // 0 -> 7 + 1 overflow bit
+    logic inc_write_counter;
     logic store_bmem_address;
     logic [31:0] latched_bmem_addr;
     logic rburst_counter;
@@ -122,11 +125,15 @@ module fpga_mem_controller(
     always_ff @(posedge clk) begin
         if(rst) begin
             read_counter <= '0;
+            write_counter <= '0;
             latched_bmem_addr <= 'x;
             bmem_rdata <= 'x;
         end else begin
             if(inc_read_counter) read_counter <= read_counter + 4'd1;
             if(read_counter == 4'd10) read_counter <= '0;
+
+            if(inc_write_counter) write_counter <= write_counter + 4'd1;
+            if(write_counter == 4'd10) write_counter <= '0;
 
             if(store_bmem_address) latched_bmem_addr <= bmem_addr;
 
@@ -149,6 +156,9 @@ module fpga_mem_controller(
         rburst_counter = 'x;
         bmem_raddr = 'x;
         inc_read_counter = 1'b0;
+        inc_write_counter = 1'b0;
+        data_in_CPU_to_FPGA_FIFO = 'x;
+        wburst_counter = 1'b0;
         next_state = state;
         unique case(state)
             CPU_IDLE: begin // Wait for a read or write operation from the CPU
@@ -200,10 +210,60 @@ module fpga_mem_controller(
                 end
             end
             CPU_SEND_WADDR: begin // Deliver the write address to the FPGA over the CPU_to_FPGA_FIFO
-
+                w_en_CPU_to_FPGA_FIFO = 1'b1; // Enable FIFO memory
+                data_in_CPU_to_FPGA_FIFO = {1'b1, // Write Enable - ON
+                                            1'b0, // Read Enable - OFF
+                                            1'b0, // Data On Bus - OFF
+                                            1'b1, // Address On Bus - ON
+                                            latched_bmem_addr};
+                next_state = CPU_WRITE_DATA;
             end
             CPU_WRITE_DATA: begin // Deliver the write data to the FPGA over the CPU_to_FPGA_FIFO and wait for a response from FPGA that it wrote the data
-
+                if(write_counter <= 4'd7) begin
+                    next_state = CPU_WRITE_DATA;
+                    if(!full_CPU_to_FPGA_FIFO) begin
+                        w_en_CPU_to_FPGA_FIFO = 1'b1; // Enable FIFO memory
+                        inc_write_counter = 1'b1; // Update the write counter
+                        case(write_counter)
+                            4'd0, 4'd2, 4'd4, 4'd6: begin
+                                wburst_counter = 1'b0;
+                                data_in_CPU_to_FPGA_FIFO = {1'b1, // Write Enable - ON
+                                                            1'b0, // Read Enable - OFF
+                                                            1'b1, // Data On Bus - ON
+                                                            1'b0, // Address On Bus - OFF
+                                                            bmem_wdata[31:0]};
+                            end
+                            4'd1, 4'd3, 4'd5, 4'd7: begin
+                                wburst_counter = 1'b1;
+                                data_in_CPU_to_FPGA_FIFO = {1'b1, // Write Enable - ON
+                                                            1'b0, // Read Enable - OFF
+                                                            1'b1, // Data On Bus - ON
+                                                            1'b0, // Address On Bus - OFF
+                                                            bmem_wdata[63:32]};
+                            end
+                        endcase 
+                    end
+                end else begin
+                    if(write_counter == 4'd8) begin
+                        // We have written all of the data now we wait for FPGA to respond
+                        next_state = CPU_WRITE_DATA;
+                        if(!empty_FPGA_to_CPU_FIFO) begin
+                            // We can write anything onto the FIFO and this can be interpreted as a response from the FPGA
+                            inc_write_counter = 1'b1;
+                            r_en_FPGA_to_CPU_FIFO = 1'b1; // Make sure to get it off of the FIFO
+                            bmem_ready = 1'b1;
+                        end
+                    end else begin
+                        if(write_counter == 4'd9) begin
+                            if(bmem_write) begin
+                                next_state = CPU_WRITE_DATA;
+                            end else begin
+                                inc_write_counter = 1'b1;
+                                next_state = CPU_IDLE;
+                            end
+                        end
+                    end
+                end
             end
             default: begin
                 w_en_CPU_to_FPGA_FIFO = 1'b0;
@@ -215,6 +275,9 @@ module fpga_mem_controller(
                 rburst_counter = 'x;
                 bmem_raddr = 'x;
                 inc_read_counter = 1'b0;
+                inc_write_counter = 1'b0;
+                data_in_CPU_to_FPGA_FIFO = 'x;
+                wburst_counter = 1'b0;
                 next_state = state;
             end
         endcase

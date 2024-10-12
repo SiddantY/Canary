@@ -136,7 +136,8 @@ module top_tb;
         .read_en_c_to_m(fpga_bram_itf.read_en_c_to_m),
         .write_en_c_to_m(fpga_bram_itf.write_en_c_to_m),
         .empty_CPU_to_FPGA_FIFO(fpga_bram_itf.empty_CPU_to_FPGA_FIFO),
-        .full_FPGA_to_CPU_FIFO(fpga_bram_itf.full_FPGA_to_CPU_FIFO)
+        .full_FPGA_to_CPU_FIFO(fpga_bram_itf.full_FPGA_to_CPU_FIFO),
+        .data_out_CPU_to_FPGA_FIFO(fpga_bram_itf.data_out_CPU_to_FPGA_FIFO)
     );
 
     `include "../../hvl/rvfi_reference.svh"

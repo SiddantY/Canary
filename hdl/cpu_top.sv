@@ -27,7 +27,8 @@ module cpu_top(
     output logic read_en_c_to_m,
     output logic write_en_c_to_m,
     output logic empty_CPU_to_FPGA_FIFO,
-    output logic full_FPGA_to_CPU_FIFO
+    output logic full_FPGA_to_CPU_FIFO,
+    output [35:0] data_out_CPU_to_FPGA_FIFO
 );
 
 logic   [31:0]  ooo_imem_addr;
@@ -195,7 +196,8 @@ fpga_mem_controller fpga_mem_controller(
     .read_en_c_to_m(read_en_c_to_m),
     .write_en_c_to_m(write_en_c_to_m),
     .empty_CPU_to_FPGA_FIFO(empty_CPU_to_FPGA_FIFO),
-    .full_FPGA_to_CPU_FIFO(full_FPGA_to_CPU_FIFO)
+    .full_FPGA_to_CPU_FIFO(full_FPGA_to_CPU_FIFO),
+    .data_out_CPU_to_FPGA_FIFO(data_out_CPU_to_FPGA_FIFO)
 );
 
 endmodule
