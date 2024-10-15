@@ -40,22 +40,7 @@ module fpga_mem_controller(
     // logic        r_en_CPU_to_FPGA_FIFO; // Drives
     // logic        empty_CPU_to_FPGA_FIFO; // Uses
 
-    // async_fifo CPU_to_FPGA_FIFO(
-    //     .data_in(data_in_CPU_to_FPGA_FIFO),
-    //     .w_en(w_en_CPU_to_FPGA_FIFO),
-    //     .w_clk(clk), // 800 MHz
-    //     .w_rst(rst), // Global Reset
-    //     .full(full_CPU_to_FPGA_FIFO),
-
-    //     .data_out(data_out_CPU_to_FPGA_FIFO),
-    //     .r_en(r_en_CPU_to_FPGA_FIFO),
-    //     .r_clk(fpga_clk), // 100 MHz
-    //     .r_rst(rst), // Global Reset
-    //     .empty(empty_CPU_to_FPGA_FIFO)
-    // );
-
-
-
+    // IP Signals
     logic        clk_push_CPU_to_FPGA_FIFO;     // CPU Clock
     logic        clk_pop_CPU_to_FPGA_FIFO;      // FPGA Clock
     logic        rst_n_CPU_to_FPGA_FIFO;        // Active Low, Global Reset
@@ -134,8 +119,6 @@ module fpga_mem_controller(
         .data_out(data_out_CPU_to_FPGA_FIFO_IP) // Used
     );
 
-
-
     // Asynchronous FIFO from FPGA to CPU
 
     // FPGA Signals
@@ -147,21 +130,8 @@ module fpga_mem_controller(
     logic [32:0] data_out_FPGA_to_CPU_FIFO; // Uses
     logic        r_en_FPGA_to_CPU_FIFO; // Driven
     logic        empty_FPGA_to_CPU_FIFO; // Uses
-    
-    // async_fifo FPGA_to_CPU_FIFO(
-    //     .data_in(address_data_bus),
-    //     .w_en(w_en_FPGA_to_CPU_FIFO),
-    //     .w_clk(fpga_clk), // 100 MHz
-    //     .w_rst(rst), // Global Reset
-    //     .full(full_FPGA_to_CPU_FIFO),
 
-    //     .data_out(data_out_FPGA_to_CPU_FIFO),
-    //     .r_en(r_en_FPGA_to_CPU_FIFO),
-    //     .r_clk(clk), // 800 MHz
-    //     .r_rst(rst), // Global Reset
-    //     .empty(empty_FPGA_to_CPU_FIFO)
-    // );
-
+    // IP Signals
     logic        clk_push_FPGA_to_CPU_FIFO;     // FPGA Clock
     logic        clk_pop_FPGA_to_CPU_FIFO;      // CPU Clock
     logic        rst_n_FPGA_to_CPU_FIFO;        // Active Low, Global Reset
