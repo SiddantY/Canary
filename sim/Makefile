@@ -2,7 +2,8 @@ SHELL=/bin/bash -o pipefail
 .SHELLFLAGS += -e
 
 PKG_SRCS  := $(PWD)/../pkg/types.sv
-HDL_SRCS  := $(shell find $(PWD)/../hdl -name '*.sv')
+V_SRCS := $(shell find $(PWD)/../hdl -name '*.v')
+HDL_SRCS := $(shell find $(PWD)/../hdl -name '*.sv' -o -name '*.v')
 HVL_SRCS  := $(shell find $(PWD)/../hvl -name '*.sv' -o -name '*.v')
 SRAM_SRCS := $(shell find $(PWD)/../sram/output -name '*.v')
 HDRS      := $(shell find $(PWD)/../hvl -name '*.svh')

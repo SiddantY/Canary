@@ -3,32 +3,16 @@ module cpu_top(
     input   logic fpga_clk,
     input   logic rst,
 
-    output logic   [31:0]      bmem_addr,
-    output logic               bmem_read,
-    output logic               bmem_write,
-    output logic   [63:0]      bmem_wdata,
-    
-    input logic               bmem_ready,
-    input logic   [31:0]      bmem_raddr,
-    input logic   [63:0]      bmem_rdata,
-    input logic               bmem_rvalid,
-
     // Memory -> Controller
-    input logic [31:0] address_data_bus_m_to_c,
-    input logic resp_m_to_c,
-    input logic r_en_CPU_to_FPGA_FIFO,
-    input logic w_en_FPGA_to_CPU_FIFO,
-    input logic [35:0] data_in_FPGA_to_CPU_FIFO,
+    input logic r_en_CPU_to_FPGA_FIFO,                  // FPGA Reads from the CPU to FPGA FIFO
+    input logic w_en_FPGA_to_CPU_FIFO,                  // FPGA Writes to FPGA to CPU FIFO
 
     // Controller -> Memory
-    output logic [31:0] address_data_bus_c_to_m,
-    output logic address_on_c_to_m,
-    output logic data_on_c_to_m,
-    output logic read_en_c_to_m,
-    output logic write_en_c_to_m,
-    output logic empty_CPU_to_FPGA_FIFO,
-    output logic full_FPGA_to_CPU_FIFO,
-    output [35:0] data_out_CPU_to_FPGA_FIFO
+    output logic empty_CPU_to_FPGA_FIFO,                // FPGA Uses to determine if CPU has written data
+    output logic full_FPGA_to_CPU_FIFO,                 // FPGA Uses to determine if it can write to the FPGA to CPU FIFO
+
+    // Controller <-> Memory
+    inout wire [33:0] address_data_bus                  // 32 Bit bi-directional bus + 2 Bits for Metadata, Driven by FPGA to return read memory, Driven by CPU to provide data to be written
 );
 
 logic   [31:0]  ooo_imem_addr;
@@ -61,20 +45,20 @@ logic           ppl_dmem_resp;
 logic flush, jump_en, jalr_done;
 
 
-// logic   [31:0]      bmem_addr;
-// logic               bmem_read;
-// logic               bmem_write;
-// logic   [63:0]      bmem_wdata;
+logic   [31:0]      bmem_addr;
+logic               bmem_read;
+logic               bmem_write;
+logic   [63:0]      bmem_wdata;
 
-// logic               bmem_ready;
-// logic   [31:0]      bmem_raddr;
-// logic   [63:0]      bmem_rdata;
-// logic               bmem_rvalid;
+logic               bmem_ready;
+logic   [31:0]      bmem_raddr;
+logic   [63:0]      bmem_rdata;
+logic               bmem_rvalid;
 
-logic               copy_bmem_ready;
-logic   [31:0]      copy_bmem_raddr;
-logic   [63:0]      copy_bmem_rdata;
-logic               copy_bmem_rvalid;
+// logic               copy_bmem_ready;
+// logic   [31:0]      copy_bmem_raddr;
+// logic   [63:0]      copy_bmem_rdata;
+// logic               copy_bmem_rvalid;
 
 
 ooo_cpu ooo(
@@ -156,10 +140,10 @@ memory memory_unit(
     .bmem_write(bmem_write),
     .bmem_wdata(bmem_wdata),
     
-    .bmem_ready(copy_bmem_ready),
-    .bmem_raddr(copy_bmem_raddr),
-    .bmem_rdata(copy_bmem_rdata),
-    .bmem_rvalid(copy_bmem_rvalid),
+    .bmem_ready(bmem_ready),
+    .bmem_raddr(bmem_raddr),
+    .bmem_rdata(bmem_rdata),
+    .bmem_rvalid(bmem_rvalid),
     .wburst_counter(wburst_counter)
 );
 
@@ -176,28 +160,22 @@ fpga_mem_controller fpga_mem_controller(
     .bmem_wdata(bmem_wdata),
 
     // Controller -> Caches
-    .bmem_ready(copy_bmem_ready),
-    .bmem_raddr(copy_bmem_raddr),
-    .bmem_rdata(copy_bmem_rdata),
-    .bmem_rvalid(copy_bmem_rvalid),
+    .bmem_ready(bmem_ready),
+    .bmem_raddr(bmem_raddr),
+    .bmem_rdata(bmem_rdata),
+    .bmem_rvalid(bmem_rvalid),
     .wburst_counter(wburst_counter),
 
     // Memory -> Controller
-    .address_data_bus_m_to_c(address_data_bus_m_to_c),
-    .resp_m_to_c(resp_m_to_c),
     .r_en_CPU_to_FPGA_FIFO(r_en_CPU_to_FPGA_FIFO),
     .w_en_FPGA_to_CPU_FIFO(w_en_FPGA_to_CPU_FIFO),
-    .data_in_FPGA_to_CPU_FIFO(data_in_FPGA_to_CPU_FIFO),
 
     // Controller -> Memory
-    .address_data_bus_c_to_m(address_data_bus_c_to_m),
-    .address_on_c_to_m(address_on_c_to_m),
-    .data_on_c_to_m(data_on_c_to_m),
-    .read_en_c_to_m(read_en_c_to_m),
-    .write_en_c_to_m(write_en_c_to_m),
     .empty_CPU_to_FPGA_FIFO(empty_CPU_to_FPGA_FIFO),
     .full_FPGA_to_CPU_FIFO(full_FPGA_to_CPU_FIFO),
-    .data_out_CPU_to_FPGA_FIFO(data_out_CPU_to_FPGA_FIFO)
+
+    // Controller <-> Memory
+    .address_data_bus(address_data_bus)
 );
 
 endmodule

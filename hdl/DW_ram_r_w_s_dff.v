@@ -65,7 +65,6 @@
 
    output [data_width-1:0] data_out;
 
-// synopsys translate_off
    wire [data_width-1:0]   data_in;
    reg [depth*data_width-1:0]    next_mem;
    reg [depth*data_width-1:0]    mem;
@@ -73,43 +72,6 @@
    
    
   
- 
-  initial begin : parameter_check
-    integer param_err_flg;
-
-    param_err_flg = 0;
-    
-	    
-  
-    if ( (data_width < 1) || (data_width > 2048) ) begin
-      param_err_flg = 1;
-   //    $display(
-	// "ERROR: %m :\n  Invalid value (%d) for parameter data_width (legal range: 1 to 2048)",
-	// data_width );
-    end
-  
-    if ( (depth < 2) || (depth > 1024 ) ) begin
-      param_err_flg = 1;
-   //    $display(
-	// "ERROR: %m :\n  Invalid value (%d) for parameter depth (legal range: 2 to 1024 )",
-	// depth );
-    end
-  
-    if ( (rst_mode < 0) || (rst_mode > 1 ) ) begin
-      param_err_flg = 1;
-   //    $display(
-	// "ERROR: %m :\n  Invalid value (%d) for parameter rst_mode (legal range: 0 to 1 )",
-	// rst_mode );
-    end
-
-  
-    if ( param_err_flg == 1) begin
-      // $display(
-      //   "%m :\n  Simulation aborted due to invalid parameter value(s)");
-      // $finish;
-    end
-
-  end // parameter_check 
 
    
    assign mem_mux = mem >> (rd_addr * data_width);
@@ -175,8 +137,7 @@ endgenerate
 `ifndef DW_DISABLE_CLK_MONITOR
 `ifndef DW_SUPPRESS_WARN
   always @ (clk) begin : clk_monitor 
-    if ( (clk !== 1'b0) && (clk !== 1'b1) && ($time > 0) )
-      // $display ("WARNING: %m:\n at time = %0t: Detected unknown value, %b, on clk input.", $time, clk);
+    if ( (clk !== 1'b0) && (clk !== 1'b1) )
     end // clk_monitor 
 `endif
 `endif

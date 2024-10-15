@@ -17,151 +17,125 @@ module fpga_mem_controller(
     output logic               wburst_counter,
 
     // Memory -> Controller
-    input logic [31:0] address_data_bus_m_to_c,
-    input logic resp_m_to_c,
-    input logic r_en_CPU_to_FPGA_FIFO,
-    input logic w_en_FPGA_to_CPU_FIFO,
-    input logic [35:0] data_in_FPGA_to_CPU_FIFO, // 34 pins
+    input logic r_en_CPU_to_FPGA_FIFO,                  // FPGA Reads from the CPU to FPGA FIFO
+    input logic w_en_FPGA_to_CPU_FIFO,                  // FPGA Writes to FPGA to CPU FIFO
 
     // Controller -> Memory
-    output logic [31:0] address_data_bus_c_to_m,
-    output logic address_on_c_to_m,
-    output logic data_on_c_to_m,
-    output logic read_en_c_to_m,
-    output logic write_en_c_to_m,
+    output logic empty_CPU_to_FPGA_FIFO,                // FPGA Uses to determine if CPU has written data
+    output logic full_FPGA_to_CPU_FIFO,                 // FPGA Uses to determine if it can write to the FPGA to CPU FIFO
 
-    output logic empty_CPU_to_FPGA_FIFO, // 1 pin
-    output logic full_FPGA_to_CPU_FIFO, // 1 pin
-    output logic [35:0] data_out_CPU_to_FPGA_FIFO // 34 pins
+    // Controller <-> Memory
+    inout wire [33:0] address_data_bus                  // 32 Bit bi-directional bus + 2 Bits for Metadata, Driven by FPGA to return read memory, Driven by CPU to provide data to be written
 );
 
-    logic        clk_push_CPU_to_FPGA_FIFO;     // CPU Clock
-    logic        clk_pop_CPU_to_FPGA_FIFO;      // FPGA Clock
-    logic        rst_n_CPU_to_FPGA_FIFO;        // Active Low, Global Reset
-    logic        push_req_n_CPU_to_FPGA_FIFO;   // Active Low, Push Request, Driven by CPU
-    logic        flush_n_CPU_to_FPGA_FIFO;      // Active Low, Not used since d_in_width == d_out_width
-    logic        pop_req_n_CPU_to_FPGA_FIFO;    // Active Low, Pop Request, Driven by FPGA
-    logic [35:0] data_in_CPU_to_FPGA_FIFO;      // Input data, Driven by CPU
 
-    logic        push_empty_CPU_to_FPGA_FIFO;   // FIFO Empty, Used by CPU, Active High
-    logic        push_ae_CPU_to_FPGA_FIFO;      // FIFO Almost Empty, Used by CPU, Active High
-    logic        push_hf_CPU_to_FPGA_FIFO;      // FIFO Half Full, Used by CPU, Active High
-    logic        push_af_CPU_to_FPGA_FIFO;      // FIFO Almost Full, Used by CPU, Active High
-    logic        push_full_CPU_to_FPGA_FIFO;    // FIFO RAM Full, Used by CPU, Without input buffer
-    logic        ram_full_CPU_to_FPGA_FIFO;     // FIFO RAM Full, Not used since d_in_width == d_out_width, Used by CPU, With input buffer
-    logic        part_wd_CPU_to_FPGA_FIFO;      // Partial Word Accumulated, Not used since d_in_width == d_out_width, Used by CPU
-    logic        push_error_CPU_to_FPGA_FIFO;   // FIFO Push Error (overrun), Used by CPU
-    logic        pop_empty_CPU_to_FPGA_FIFO;    // FIFO Empty, Used by FPGA
-    logic        pop_ae_CPU_to_FPGA_FIFO;       // FIFO Almost Empty, Used by FPGA
-    logic        pop_hf_CPU_to_FPGA_FIFO;       // FIFO Half Full, Used by FPGA
-    logic        pop_af_CPU_to_FPGA_FIFO;       // FIFO Almost Full, Used by FPGA
-    logic        pop_full_CPU_to_FPGA_FIFO;     // FIFO Full, Used by FPGA
-    logic        pop_error_CPU_to_FPGA_FIFO;    // FIFO Pop Error, Used by FPGA
-    logic [35:0] data_out_CPU_to_FPGA_FIFO;     // Output data, Used by FPGA
+    // logic        clk_push_CPU_to_FPGA_FIFO;     // CPU Clock
+    // logic        clk_pop_CPU_to_FPGA_FIFO;      // FPGA Clock
+    // logic        rst_n_CPU_to_FPGA_FIFO;        // Active Low, Global Reset
+    // logic        push_req_n_CPU_to_FPGA_FIFO;   // Active Low, Push Request, Driven by CPU
+    // logic        flush_n_CPU_to_FPGA_FIFO;      // Active Low, Not used since d_in_width == d_out_width
+    // logic        pop_req_n_CPU_to_FPGA_FIFO;    // Active Low, Pop Request, Driven by FPGA
+    // logic [35:0] data_in_CPU_to_FPGA_FIFO_IP;   // Input data, Driven by CPU
 
-    DW_asymfifo_s2_sf CPU_to_FPGA_FIFO_test #(
-        .data_in_width(36),
-        .data_out_width(36),
-        .depth(32)
-        // .push_ae_lvl(),
-        // .push_af_lvl(),
-        // .pop_ae_lvl(),
-        // .pop_af_lvl(),
-        // .err_mode(),
-        // .push_sync(),
-        // .pop_sync(),
-        // .rst_mode(),
-        // .byte_order(), ?
-    )(
-        .clk_push(clk_push_CPU_to_FPGA_FIFO),
-        .clk_pop(clk_pop_CPU_to_FPGA_FIFO),
-        .rst_n(rst_n_CPU_to_FPGA_FIFO),
-        .push_req_n(push_req_n_CPU_to_FPGA_FIFO),
-        .flush_n(flush_n_CPU_to_FPGA_FIFO),
-        .pop_req_n(pop_req_n_CPU_to_FPGA_FIFO),
-        .data_in(data_in_CPU_to_FPGA_FIFO),
+    // logic        push_empty_CPU_to_FPGA_FIFO;   // FIFO Empty, Used by CPU, Active High
+    // logic        push_ae_CPU_to_FPGA_FIFO;      // FIFO Almost Empty, Used by CPU, Active High
+    // logic        push_hf_CPU_to_FPGA_FIFO;      // FIFO Half Full, Used by CPU, Active High
+    // logic        push_af_CPU_to_FPGA_FIFO;      // FIFO Almost Full, Used by CPU, Active High
+    // logic        push_full_CPU_to_FPGA_FIFO;    // FIFO RAM Full, Used by CPU, Without input buffer
+    // logic        ram_full_CPU_to_FPGA_FIFO;     // FIFO RAM Full, Not used since d_in_width == d_out_width, Used by CPU, With input buffer
+    // logic        part_wd_CPU_to_FPGA_FIFO;      // Partial Word Accumulated, Not used since d_in_width == d_out_width, Used by CPU
+    // logic        push_error_CPU_to_FPGA_FIFO;   // FIFO Push Error (overrun), Used by CPU
+    // logic        pop_empty_CPU_to_FPGA_FIFO;    // FIFO Empty, Used by FPGA
+    // logic        pop_ae_CPU_to_FPGA_FIFO;       // FIFO Almost Empty, Used by FPGA
+    // logic        pop_hf_CPU_to_FPGA_FIFO;       // FIFO Half Full, Used by FPGA
+    // logic        pop_af_CPU_to_FPGA_FIFO;       // FIFO Almost Full, Used by FPGA
+    // logic        pop_full_CPU_to_FPGA_FIFO;     // FIFO Full, Used by FPGA
+    // logic        pop_error_CPU_to_FPGA_FIFO;    // FIFO Pop Error, Used by FPGA
+    // logic [35:0] data_out_CPU_to_FPGA_FIFO_IP;  // Output data, Used by FPGA
 
-        .push_empty(push_empty_CPU_to_FPGA_FIFO),
-        .push_ae(push_ae_CPU_to_FPGA_FIFO),
-        .push_hf(push_hf_CPU_to_FPGA_FIFO),
-        .push_af(push_af_CPU_to_FPGA_FIFO),
-        .push_full(push_full_CPU_to_FPGA_FIFO),
-        .ram_full(ram_full_CPU_to_FPGA_FIFO),
-        .part_wd(part_wd_CPU_to_FPGA_FIFO),
-        .push_error(push_error_CPU_to_FPGA_FIFO),
-        .pop_empty(pop_empty_CPU_to_FPGA_FIFO),
-        .pop_ae(pop_ae_CPU_to_FPGA_FIFO),
-        .pop_hf(pop_hf_CPU_to_FPGA_FIFO),
-        .pop_af(pop_af_CPU_to_FPGA_FIFO),
-        .pop_full(pop_full_CPU_to_FPGA_FIFO),
-        .pop_error(pop_error_CPU_to_FPGA_FIFO),
-        .data_out(data_out_CPU_to_FPGA_FIFO)
-    );
+    // DW_asymfifo_s2_sf #(
+    //     .data_in_width(36),
+    //     .data_out_width(36),
+    //     .depth(32)
+    // ) CPU_to_FPGA_FIFO_test (
+    //     .clk_push(clk_push_CPU_to_FPGA_FIFO),
+    //     .clk_pop(clk_pop_CPU_to_FPGA_FIFO),
+    //     .rst_n(rst_n_CPU_to_FPGA_FIFO),
+    //     .push_req_n(push_req_n_CPU_to_FPGA_FIFO),
+    //     .flush_n(flush_n_CPU_to_FPGA_FIFO),
+    //     .pop_req_n(pop_req_n_CPU_to_FPGA_FIFO),
+    //     .data_in(data_in_CPU_to_FPGA_FIFO_IP),
 
-    logic        clk_push_FPGA_to_CPU_FIFO;
-    logic        clk_pop_FPGA_to_CPU_FIFO;
-    logic        rst_n_FPGA_to_CPU_FIFO;
-    logic        push_req_n_FPGA_to_CPU_FIFO;
-    logic        flush_n_FPGA_to_CPU_FIFO;
-    logic        pop_req_n_FPGA_to_CPU_FIFO;
-    logic [35:0] data_in_FPGA_to_CPU_FIFO;
+    //     .push_empty(push_empty_CPU_to_FPGA_FIFO),
+    //     .push_ae(push_ae_CPU_to_FPGA_FIFO),
+    //     .push_hf(push_hf_CPU_to_FPGA_FIFO),
+    //     .push_af(push_af_CPU_to_FPGA_FIFO),
+    //     .push_full(push_full_CPU_to_FPGA_FIFO),
+    //     .ram_full(ram_full_CPU_to_FPGA_FIFO),
+    //     .part_wd(part_wd_CPU_to_FPGA_FIFO),
+    //     .push_error(push_error_CPU_to_FPGA_FIFO),
+    //     .pop_empty(pop_empty_CPU_to_FPGA_FIFO),
+    //     .pop_ae(pop_ae_CPU_to_FPGA_FIFO),
+    //     .pop_hf(pop_hf_CPU_to_FPGA_FIFO),
+    //     .pop_af(pop_af_CPU_to_FPGA_FIFO),
+    //     .pop_full(pop_full_CPU_to_FPGA_FIFO),
+    //     .pop_error(pop_error_CPU_to_FPGA_FIFO),
+    //     .data_out(data_out_CPU_to_FPGA_FIFO_IP)
+    // );
 
-    logic        push_empty_FPGA_to_CPU_FIFO;
-    logic        push_ae_FPGA_to_CPU_FIFO;
-    logic        push_hf_FPGA_to_CPU_FIFO;
-    logic        push_af_FPGA_to_CPU_FIFO;
-    logic        push_full_FPGA_to_CPU_FIFO;
-    logic        ram_full_FPGA_to_CPU_FIFO;
-    logic        part_wd_FPGA_to_CPU_FIFO;
-    logic        push_error_FPGA_to_CPU_FIFO;
-    logic        pop_empty_FPGA_to_CPU_FIFO;
-    logic        pop_ae_FPGA_to_CPU_FIFO;
-    logic        pop_hf_FPGA_to_CPU_FIFO;
-    logic        pop_af_FPGA_to_CPU_FIFO;
-    logic        pop_full_FPGA_to_CPU_FIFO;
-    logic        pop_error_FPGA_to_CPU_FIFO;
-    logic [35:0] data_out_FPGA_to_CPU_FIFO;
+    // logic        clk_push_FPGA_to_CPU_FIFO;     // FPGA Clock
+    // logic        clk_pop_FPGA_to_CPU_FIFO;      // CPU Clock
+    // logic        rst_n_FPGA_to_CPU_FIFO;        // Active Low, Global Reset
+    // logic        push_req_n_FPGA_to_CPU_FIFO;   // Active Low, Push Request, Driven by FPGA
+    // logic        flush_n_FPGA_to_CPU_FIFO;      // Active Low, Not used since d_in_width == d_out_width
+    // logic        pop_req_n_FPGA_to_CPU_FIFO;    // Active Low, Pop Request, Driven by the CPU
+    // logic [35:0] data_in_FPGA_to_CPU_FIFO_IP;   // Input data, Driven by the FPGA
 
-    DW_asymfifo_s2_sf FPGA_TO_CPU_FIFO_test #(
-        .data_in_width(36),
-        .data_out_width(36),
-        .depth(32)
-        // .push_ae_lvl(),
-        // .push_af_lvl(),
-        // .pop_ae_lvl(),
-        // .pop_af_lvl(),
-        // .err_mode(),
-        // .push_sync(),
-        // .pop_sync(),
-        // .rst_mode(),
-        // .byte_order(), ?
-    )(
-        .clk_push(clk_push_FPGA_to_CPU_FIFO),
-        .clk_pop(clk_pop_FPGA_to_CPU_FIFO),
-        .rst_n(rst_n_FPGA_to_CPU_FIFO),
-        .push_req_n(push_req_n_FPGA_to_CPU_FIFO),
-        .flush_n(flush_n_FPGA_to_CPU_FIFO),
-        .pop_req_n(pop_req_n_FPGA_to_CPU_FIFO),
-        .data_in(data_in_FPGA_to_CPU_FIFO),
+    // logic        push_empty_FPGA_to_CPU_FIFO;   // FIFO Empty, Used by FPGA, Active High
+    // logic        push_ae_FPGA_to_CPU_FIFO;      // FIFO Almost Empty, Used by FPGA, Active High
+    // logic        push_hf_FPGA_to_CPU_FIFO;      // FIFO Half Empty, Used by FPGA, Active High
+    // logic        push_af_FPGA_to_CPU_FIFO;      // FIFO Almost Full, Used by FPGA, Active High
+    // logic        push_full_FPGA_to_CPU_FIFO;    // FIFO RAM Full, Used by FPGA, Without input buffer
+    // logic        ram_full_FPGA_to_CPU_FIFO;     // FIFO RAM Full, Not used since d_in_width == d_out_width, Used by FPGA, With input buffer
+    // logic        part_wd_FPGA_to_CPU_FIFO;      // Partial Word Accumulated, Not used since d_in_width == d_out_width, Used by FPGA
+    // logic        push_error_FPGA_to_CPU_FIFO;   // FIFO Push Error (overrun), Used by FPGA
+    // logic        pop_empty_FPGA_to_CPU_FIFO;    // FIFO Empty, Used by CPU
+    // logic        pop_ae_FPGA_to_CPU_FIFO;       // FIFO Almost Empty, Used by CPU
+    // logic        pop_hf_FPGA_to_CPU_FIFO;       // FIFO Half Full, Used by CPU
+    // logic        pop_af_FPGA_to_CPU_FIFO;       // FIFO Almost Full, Used by CPU
+    // logic        pop_full_FPGA_to_CPU_FIFO;     // FIFO Full, Used by CPU
+    // logic        pop_error_FPGA_to_CPU_FIFO;    // FIFO Pop Error, Used by CPU
+    // logic [35:0] data_out_FPGA_to_CPU_FIFO_IP;  // Output data, Used by CPU
 
-        .push_empty(push_empty_FPGA_to_CPU_FIFO),
-        .push_ae(push_ae_FPGA_to_CPU_FIFO),
-        .push_hf(push_hf_FPGA_to_CPU_FIFO),
-        .push_af(push_af_FPGA_to_CPU_FIFO),
-        .push_full(push_full_FPGA_to_CPU_FIFO),
-        .ram_full(ram_full_FPGA_to_CPU_FIFO),
-        .part_wd(part_wd_FPGA_to_CPU_FIFO),
-        .push_error(push_error_FPGA_to_CPU_FIFO),
-        .pop_empty(pop_empty_FPGA_to_CPU_FIFO),
-        .pop_ae(pop_ae_FPGA_to_CPU_FIFO),
-        .pop_hf(pop_hf_FPGA_to_CPU_FIFO),
-        .pop_af(pop_af_FPGA_to_CPU_FIFO),
-        .pop_full(pop_full_FPGA_to_CPU_FIFO),
-        .pop_error(pop_error_FPGA_to_CPU_FIFO),
-        .data_out(data_out_FPGA_to_CPU_FIFO)
-    );
+    // DW_asymfifo_s2_sf #(
+    //     .data_in_width(36),
+    //     .data_out_width(36),
+    //     .depth(32)
+    // ) FPGA_TO_CPU_FIFO_test(
+    //     .clk_push(clk_push_FPGA_to_CPU_FIFO),
+    //     .clk_pop(clk_pop_FPGA_to_CPU_FIFO),
+    //     .rst_n(rst_n_FPGA_to_CPU_FIFO),
+    //     .push_req_n(push_req_n_FPGA_to_CPU_FIFO),
+    //     .flush_n(flush_n_FPGA_to_CPU_FIFO),
+    //     .pop_req_n(pop_req_n_FPGA_to_CPU_FIFO),
+    //     .data_in(data_in_FPGA_to_CPU_FIFO_IP),
 
-
+    //     .push_empty(push_empty_FPGA_to_CPU_FIFO),
+    //     .push_ae(push_ae_FPGA_to_CPU_FIFO),
+    //     .push_hf(push_hf_FPGA_to_CPU_FIFO),
+    //     .push_af(push_af_FPGA_to_CPU_FIFO),
+    //     .push_full(push_full_FPGA_to_CPU_FIFO),
+    //     .ram_full(ram_full_FPGA_to_CPU_FIFO),
+    //     .part_wd(part_wd_FPGA_to_CPU_FIFO),
+    //     .push_error(push_error_FPGA_to_CPU_FIFO),
+    //     .pop_empty(pop_empty_FPGA_to_CPU_FIFO),
+    //     .pop_ae(pop_ae_FPGA_to_CPU_FIFO),
+    //     .pop_hf(pop_hf_FPGA_to_CPU_FIFO),
+    //     .pop_af(pop_af_FPGA_to_CPU_FIFO),
+    //     .pop_full(pop_full_FPGA_to_CPU_FIFO),
+    //     .pop_error(pop_error_FPGA_to_CPU_FIFO),
+    //     .data_out(data_out_FPGA_to_CPU_FIFO_IP)
+    // );
 
     enum logic [4:0] {
         CPU_IDLE,
@@ -184,12 +158,12 @@ module fpga_mem_controller(
     // Asynchronous FIFO from CPU to FPGA
 
     // CPU Signals
-    logic [35:0] data_in_CPU_to_FPGA_FIFO; // Drives
+    logic [33:0] data_in_CPU_to_FPGA_FIFO; // Drives
     logic        w_en_CPU_to_FPGA_FIFO; // Drives
     logic        full_CPU_to_FPGA_FIFO; // Uses
 
     // FPGA Signals
-    // logic [35:0] data_out_CPU_to_FPGA_FIFO; // Uses
+    logic [33:0] data_out_CPU_to_FPGA_FIFO; // Uses
     // logic        r_en_CPU_to_FPGA_FIFO; // Drives
     // logic        empty_CPU_to_FPGA_FIFO; // Uses
 
@@ -207,11 +181,13 @@ module fpga_mem_controller(
         .empty(empty_CPU_to_FPGA_FIFO)
     );
 
-    assign address_data_bus_c_to_m = data_out_CPU_to_FPGA_FIFO[31:0];
-    assign address_on_c_to_m = data_out_CPU_to_FPGA_FIFO[32];
-    assign data_on_c_to_m = data_out_CPU_to_FPGA_FIFO[33];
-    assign read_en_c_to_m = data_out_CPU_to_FPGA_FIFO[34];
-    assign write_en_c_to_m = data_out_CPU_to_FPGA_FIFO[35];
+    // assign address_data_bus_c_to_m = data_out_CPU_to_FPGA_FIFO[31:0];
+    // assign address_on_c_to_m = data_out_CPU_to_FPGA_FIFO[32];
+    // assign data_on_c_to_m = data_out_CPU_to_FPGA_FIFO[33];
+    // assign read_en_c_to_m = data_out_CPU_to_FPGA_FIFO[34];
+    // assign write_en_c_to_m = data_out_CPU_to_FPGA_FIFO[35];
+
+    assign address_data_bus = w_en_FPGA_to_CPU_FIFO ? 'z : data_out_CPU_to_FPGA_FIFO; // In the case
 
     // Asynchronous FIFO from CPU to FPGA
 
@@ -221,12 +197,12 @@ module fpga_mem_controller(
     // logic        full_FPGA_to_CPU_FIFO; // Uses
 
     // CPU Signals
-    logic [35:0] data_out_FPGA_to_CPU_FIFO; // Uses
+    logic [33:0] data_out_FPGA_to_CPU_FIFO; // Uses
     logic        r_en_FPGA_to_CPU_FIFO; // Driven
     logic        empty_FPGA_to_CPU_FIFO; // Uses
     
     async_fifo FPGA_to_CPU_FIFO(
-        .data_in(data_in_FPGA_to_CPU_FIFO),
+        .data_in(address_data_bus),
         .w_en(w_en_FPGA_to_CPU_FIFO),
         .w_clk(fpga_clk), // 100 MHz
         .w_rst(rst), // Global Reset
@@ -304,8 +280,6 @@ module fpga_mem_controller(
                 w_en_CPU_to_FPGA_FIFO = 1'b1; // Enable FIFO memory
                 data_in_CPU_to_FPGA_FIFO = {1'b0, // Write Enable - OFF
                                             1'b1, // Read Enable - ON
-                                            1'b0, // Data On Bus - OFF
-                                            1'b1, // Address On Bus - ON
                                             latched_bmem_addr};
                 next_state = CPU_READ_DATA;
             end
@@ -339,8 +313,6 @@ module fpga_mem_controller(
                 w_en_CPU_to_FPGA_FIFO = 1'b1; // Enable FIFO memory
                 data_in_CPU_to_FPGA_FIFO = {1'b1, // Write Enable - ON
                                             1'b0, // Read Enable - OFF
-                                            1'b0, // Data On Bus - OFF
-                                            1'b1, // Address On Bus - ON
                                             latched_bmem_addr};
                 next_state = CPU_WRITE_DATA;
             end
@@ -355,16 +327,12 @@ module fpga_mem_controller(
                                 wburst_counter = 1'b0;
                                 data_in_CPU_to_FPGA_FIFO = {1'b1, // Write Enable - ON
                                                             1'b0, // Read Enable - OFF
-                                                            1'b1, // Data On Bus - ON
-                                                            1'b0, // Address On Bus - OFF
                                                             bmem_wdata[31:0]};
                             end
                             4'd1, 4'd3, 4'd5, 4'd7: begin
                                 wburst_counter = 1'b1;
                                 data_in_CPU_to_FPGA_FIFO = {1'b1, // Write Enable - ON
                                                             1'b0, // Read Enable - OFF
-                                                            1'b1, // Data On Bus - ON
-                                                            1'b0, // Address On Bus - OFF
                                                             bmem_wdata[63:32]};
                             end
                         endcase 

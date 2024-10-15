@@ -22,6 +22,7 @@ allowed_sv_tasks = [
     "onehot",
     "onehot0",
     "fatal",
+    "random"
 ]
 sus_keywords = ["translate_off", "DPI"]
 search_dir = ["hdl", "pkg"]

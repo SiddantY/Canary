@@ -167,7 +167,6 @@ output  pop_error;
 output  [(data_out_width-1):0]  data_out;
 
 
-// synopsys translate_off
 
 wire mem_rst_n;
 
@@ -186,106 +185,6 @@ wire	we_n;
 
    
  
-  initial begin : parameter_check
-    integer param_err_flg;
-
-    param_err_flg = 0;
-    
-
-   
-    if ( (data_in_width < 1) || (data_in_width > 2048 ) ) begin
-      param_err_flg = 1;
-    //   $display(
-	// "ERROR: %m :\n  Invalid value (%d) for parameter data_in_width (legal range: 1 to 2048 )",
-	// data_in_width );
-    end
-   
-    if ( (data_out_width < 1) || (data_out_width > 2048 ) ) begin
-      param_err_flg = 1;
-    //   $display(
-	// "ERROR: %m :\n  Invalid value (%d) for parameter data_out_width (legal range: 1 to 2048 )",
-	// data_out_width );
-    end
-   
-    if ( (depth < 4) || (depth > 1024) ) begin
-      param_err_flg = 1;
-    //   $display(
-	// "ERROR: %m :\n  Invalid value (%d) for parameter depth (legal range: 4 to 1024)",
-	// depth );
-    end
-   
-    if ( (push_ae_lvl < 1) || (push_ae_lvl > depth-1 ) ) begin
-      param_err_flg = 1;
-    //   $display(
-	// "ERROR: %m :\n  Invalid value (%d) for parameter push_ae_lvl (legal range: 1 to depth-1 )",
-	// push_ae_lvl );
-    end
-   
-    if ( (push_af_lvl < 1) || (push_af_lvl > depth-1 ) ) begin
-      param_err_flg = 1;
-    //   $display(
-	// "ERROR: %m :\n  Invalid value (%d) for parameter push_af_lvl (legal range: 1 to depth-1 )",
-	// push_af_lvl );
-    end
-   
-    if ( (pop_ae_lvl < 1) || (pop_ae_lvl > depth-1 ) ) begin
-      param_err_flg = 1;
-    //   $display(
-	// "ERROR: %m :\n  Invalid value (%d) for parameter pop_ae_lvl (legal range: 1 to depth-1 )",
-	// pop_ae_lvl );
-    end
-   
-    if ( (pop_af_lvl < 1) || (pop_af_lvl > depth-1 ) ) begin
-      param_err_flg = 1;
-    //   $display(
-	// "ERROR: %m :\n  Invalid value (%d) for parameter pop_af_lvl (legal range: 1 to depth-1 )",
-	// pop_af_lvl );
-    end
-   
-    if ( (push_sync < 1) || (push_sync > 3 ) ) begin
-      param_err_flg = 1;
-    //   $display(
-	// "ERROR: %m :\n  Invalid value (%d) for parameter push_sync (legal range: 1 to 3 )",
-	// push_sync );
-    end
-   
-    if ( (pop_sync < 1) || (pop_sync > 3 ) ) begin
-      param_err_flg = 1;
-    //   $display(
-	// "ERROR: %m :\n  Invalid value (%d) for parameter pop_sync (legal range: 1 to 3 )",
-	// pop_sync );
-    end
-   
-    if ( (err_mode < 0) || (err_mode > 1 ) ) begin
-      param_err_flg = 1;
-    //   $display(
-	// "ERROR: %m :\n  Invalid value (%d) for parameter err_mode (legal range: 0 to 1 )",
-	// err_mode );
-    end
-   
-    if ( (rst_mode < 0) || (rst_mode > 3 ) ) begin
-      param_err_flg = 1;
-    //   $display(
-	// "ERROR: %m :\n  Invalid value (%d) for parameter rst_mode (legal range: 0 to 3 )",
-	// rst_mode );
-    end
-   
-    if ( (byte_order < 0) || (byte_order > 1 ) ) begin
-      param_err_flg = 1;
-    //   $display(
-	// "ERROR: %m :\n  Invalid value (%d) for parameter byte_order (legal range: 0 to 1 )",
-	// byte_order );
-    end
-
-   
-    if ( param_err_flg == 1) begin
-    //   $display(
-    //     "%m :\n  Simulation aborted due to invalid parameter value(s)");
-    //   $finish;
-    end
-
-  end // parameter_check 
-
      
 DW_asymfifoctl_s2_sf 	#(
 	data_in_width, data_out_width, depth, push_ae_lvl, push_af_lvl,

@@ -24,8 +24,8 @@ module top_tb;
     // random_tb mem(.itf_i(mem_itf_i), .itf_d(mem_itf_d));
 
     // Single memory port connection when caches are integrated into design (CP3 and after)
-    banked_mem_itf bmem_itf(.*);
-    banked_memory banked_memory(.itf(bmem_itf));
+    // banked_mem_itf bmem_itf(.*);
+    // banked_memory banked_memory(.itf(bmem_itf));
 
     // FPGA BRAM
     fpga_bram_itf fpga_bram_itf(.*);
@@ -113,31 +113,25 @@ module top_tb;
         // .dmem_resp      (mem_itf_d.resp)
 
         // Single memory port connection when caches are integrated into design (CP3 and after)
-        .bmem_addr(bmem_itf.addr),
-        .bmem_read(bmem_itf.read),
-        .bmem_write(bmem_itf.write),
-        .bmem_wdata(bmem_itf.wdata),
-        .bmem_ready(bmem_itf.ready),
-        .bmem_raddr(bmem_itf.raddr),
-        .bmem_rdata(bmem_itf.rdata),
-        .bmem_rvalid(bmem_itf.rvalid),
+        // .bmem_addr(bmem_itf.addr),
+        // .bmem_read(bmem_itf.read),
+        // .bmem_write(bmem_itf.write),
+        // .bmem_wdata(bmem_itf.wdata),
+        // .bmem_ready(bmem_itf.ready),
+        // .bmem_raddr(bmem_itf.raddr),
+        // .bmem_rdata(bmem_itf.rdata),
+        // .bmem_rvalid(bmem_itf.rvalid),
 
         // Memory -> Controller
-        .address_data_bus_m_to_c(fpga_bram_itf.address_data_bus_m_to_c),
-        .resp_m_to_c(fpga_bram_itf.resp_m_to_c),
         .r_en_CPU_to_FPGA_FIFO(fpga_bram_itf.r_en_CPU_to_FPGA_FIFO),
         .w_en_FPGA_to_CPU_FIFO(fpga_bram_itf.w_en_FPGA_to_CPU_FIFO),
-        .data_in_FPGA_to_CPU_FIFO(fpga_bram_itf.data_in_FPGA_to_CPU_FIFO),
 
         // Controller -> Memory
-        .address_data_bus_c_to_m(fpga_bram_itf.address_data_bus_c_to_m),
-        .address_on_c_to_m(fpga_bram_itf.address_on_c_to_m),
-        .data_on_c_to_m(fpga_bram_itf.data_on_c_to_m),
-        .read_en_c_to_m(fpga_bram_itf.read_en_c_to_m),
-        .write_en_c_to_m(fpga_bram_itf.write_en_c_to_m),
         .empty_CPU_to_FPGA_FIFO(fpga_bram_itf.empty_CPU_to_FPGA_FIFO),
         .full_FPGA_to_CPU_FIFO(fpga_bram_itf.full_FPGA_to_CPU_FIFO),
-        .data_out_CPU_to_FPGA_FIFO(fpga_bram_itf.data_out_CPU_to_FPGA_FIFO)
+
+        // Controller <-> Memory
+        .address_data_bus(fpga_bram_itf.address_data_bus)
     );
 
     `include "../../hvl/rvfi_reference.svh"
