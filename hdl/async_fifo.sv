@@ -1,6 +1,6 @@
 module async_fifo #(
     parameter DEPTH = 8, // Technically it is 7 but we will need to round up to 8 items
-    parameter WIDTH = 34,
+    parameter WIDTH = 33,
     parameter PTR_WIDTH = $clog2(DEPTH)
 )(
     // CPU

@@ -25,7 +25,7 @@ module fpga_mem_controller(
     output logic full_FPGA_to_CPU_FIFO,                 // FPGA Uses to determine if it can write to the FPGA to CPU FIFO
 
     // Controller <-> Memory
-    inout wire [33:0] address_data_bus                  // 32 Bit bi-directional bus + 2 Bits for Metadata, Driven by FPGA to return read memory, Driven by CPU to provide data to be written
+    inout wire [32:0] address_data_bus                  // 32 Bit bi-directional bus + 2 Bits for Metadata, Driven by FPGA to return read memory, Driven by CPU to provide data to be written
 );
 
 
@@ -158,12 +158,12 @@ module fpga_mem_controller(
     // Asynchronous FIFO from CPU to FPGA
 
     // CPU Signals
-    logic [33:0] data_in_CPU_to_FPGA_FIFO; // Drives
+    logic [32:0] data_in_CPU_to_FPGA_FIFO; // Drives
     logic        w_en_CPU_to_FPGA_FIFO; // Drives
     logic        full_CPU_to_FPGA_FIFO; // Uses
 
     // FPGA Signals
-    logic [33:0] data_out_CPU_to_FPGA_FIFO; // Uses
+    logic [32:0] data_out_CPU_to_FPGA_FIFO; // Uses
     // logic        r_en_CPU_to_FPGA_FIFO; // Drives
     // logic        empty_CPU_to_FPGA_FIFO; // Uses
 
@@ -197,7 +197,7 @@ module fpga_mem_controller(
     // logic        full_FPGA_to_CPU_FIFO; // Uses
 
     // CPU Signals
-    logic [33:0] data_out_FPGA_to_CPU_FIFO; // Uses
+    logic [32:0] data_out_FPGA_to_CPU_FIFO; // Uses
     logic        r_en_FPGA_to_CPU_FIFO; // Driven
     logic        empty_FPGA_to_CPU_FIFO; // Uses
     
@@ -279,7 +279,6 @@ module fpga_mem_controller(
             CPU_SEND_RADDR: begin // Deliver the read address to the FPGA over the CPU_to_FPGA_FIFO
                 w_en_CPU_to_FPGA_FIFO = 1'b1; // Enable FIFO memory
                 data_in_CPU_to_FPGA_FIFO = {1'b0, // Write Enable - OFF
-                                            1'b1, // Read Enable - ON
                                             latched_bmem_addr};
                 next_state = CPU_READ_DATA;
             end
@@ -312,7 +311,6 @@ module fpga_mem_controller(
             CPU_SEND_WADDR: begin // Deliver the write address to the FPGA over the CPU_to_FPGA_FIFO
                 w_en_CPU_to_FPGA_FIFO = 1'b1; // Enable FIFO memory
                 data_in_CPU_to_FPGA_FIFO = {1'b1, // Write Enable - ON
-                                            1'b0, // Read Enable - OFF
                                             latched_bmem_addr};
                 next_state = CPU_WRITE_DATA;
             end
@@ -326,13 +324,11 @@ module fpga_mem_controller(
                             4'd0, 4'd2, 4'd4, 4'd6: begin
                                 wburst_counter = 1'b0;
                                 data_in_CPU_to_FPGA_FIFO = {1'b1, // Write Enable - ON
-                                                            1'b0, // Read Enable - OFF
                                                             bmem_wdata[31:0]};
                             end
                             4'd1, 4'd3, 4'd5, 4'd7: begin
                                 wburst_counter = 1'b1;
                                 data_in_CPU_to_FPGA_FIFO = {1'b1, // Write Enable - ON
-                                                            1'b0, // Read Enable - OFF
                                                             bmem_wdata[63:32]};
                             end
                         endcase 

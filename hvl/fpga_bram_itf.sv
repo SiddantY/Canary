@@ -1,5 +1,5 @@
 interface fpga_bram_itf #(
-    parameter   ADDRESS_DATA_WIDTH = 34 // 64-bit data / 32-bit addr
+    parameter   ADDRESS_DATA_WIDTH = 33 // 64-bit data / 32-bit addr
 )(
     input   bit         fpga_clk,
     input   bit         rst
@@ -14,7 +14,7 @@ interface fpga_bram_itf #(
     logic                            full_FPGA_to_CPU_FIFO;
 
     // Controller <-> Memory
-    wire  [ADDRESS_DATA_WIDTH-1:0]  address_data_bus;
+    wire  [ADDRESS_DATA_WIDTH-1:0]   address_data_bus;
 
     bit                         error = 1'b0;
 

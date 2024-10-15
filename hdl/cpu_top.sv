@@ -12,7 +12,7 @@ module cpu_top(
     output logic full_FPGA_to_CPU_FIFO,                 // FPGA Uses to determine if it can write to the FPGA to CPU FIFO
 
     // Controller <-> Memory
-    inout wire [33:0] address_data_bus                  // 32 Bit bi-directional bus + 2 Bits for Metadata, Driven by FPGA to return read memory, Driven by CPU to provide data to be written
+    inout wire [32:0] address_data_bus                  // 32 Bit bi-directional bus + 2 Bits for Metadata, Driven by FPGA to return read memory, Driven by CPU to provide data to be written
 );
 
 logic   [31:0]  ooo_imem_addr;

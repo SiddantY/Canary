@@ -125,10 +125,10 @@ module fpga_bram #(
             end
             FPGA_READ_ADDR: begin
                 store_address = 1'b1;
-                if(itf.address_data_bus[32]) begin // Read Bit On
-                    next_state = FPGA_SEND_MEM;
-                end else if(itf.address_data_bus[33]) begin // Write Bit On
+                if(itf.address_data_bus[32]) begin // Write Bit On
                     next_state = FPGA_WRITE_MEM;
+                end else if(!itf.address_data_bus[32]) begin // Read Bit On
+                    next_state = FPGA_SEND_MEM;
                 end else begin
                     next_state = FPGA_READ_ADDR;
                 end
@@ -204,7 +204,7 @@ module fpga_bram #(
         endcase
     end
 
-    logic [33:0] douta;
+    logic [32:0] douta;
 
     assign itf.address_data_bus = itf.w_en_FPGA_to_CPU_FIFO ? douta : 'z;
 
@@ -216,7 +216,7 @@ module fpga_bram #(
             // if($isunknown(internal_memory_array[(addra + (32'd8 *rburst_counter)) / 32'd8][32*sub_rburst_counter +: 32])) $display("Read data is invalid");
             douta[31:0] <= internal_memory_array[(addra + (32'd8 *rburst_counter)) / 32'd8][32*sub_rburst_counter +: 32];
         end else if(fpga_resp)begin
-            douta <= {34{1'b1}};
+            douta <= {33{1'b1}};
         end else begin
             douta <= 'x;
         end
